@@ -5,7 +5,7 @@
     --page-background: #fff;
     --page-border-color: #ddd;
     --separator-color: #ccc;
-    --navigation-bg: #eee;
+    /* --navigation-bg: #eee; Removed */
 }
 
 /* Dark theme */
@@ -15,7 +15,7 @@
     --page-background: #333;
     --page-border-color: #555;
     --separator-color: #666;
-    --navigation-bg: #444;
+    /* --navigation-bg: #444; Removed */
 }
 
 body {
@@ -25,47 +25,47 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: var(--background-color); /* Use variable */
-    color: var(--text-color); /* Use variable */
-    padding: 0; /* Remove padding, use padding on book-container */
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding: 0; /* Adjust padding as navigation bar is removed */
     box-sizing: border-box;
-    transition: background-color 0.3s, color 0.3s; /* Smooth theme transition */
+    transition: background-color 0.3s, color 0.3s;
 }
 
 #book-container {
     flex-grow: 1;
     display: flex;
     justify-content: center;
-    padding: 20px;
+    /* Adjust padding after removing bottom nav */
+    padding: 20px 20px 20px 20px; /* Top Right Bottom Left */
     gap: 20px;
     overflow: hidden;
     box-sizing: border-box;
+    position: relative; /* Needed for absolute positioning of the line */
 }
 
 .page {
-    background-color: var(--page-background); /* Use variable */
-    /* Remove border for simpler look */
-    /* border: 1px solid var(--page-border-color); */
+    background-color: var(--page-background);
     padding: 20px;
     overflow-y: auto;
     box-sizing: border-box;
     max-width: 100%;
-    scrollbar-width: none; /* Hide scrollbar for aesthetics */
-    -ms-overflow-style: none; /* IE 10+ */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .page::-webkit-scrollbar {
-    display: none; /* Hide scrollbar for Webkit browsers */
+    display: none;
 }
 
 
 /* Basic Markdown Styling */
-/* Add styles for the section number */
+/* Style for the section number (now just the number) */
 .page .section-number {
-    display: block; /* Display as a block to be on its own line */
+    display: block;
     text-align: center;
     font-size: 1.1em;
-    margin: 1em 0; /* Add some space around it */
+    margin: 1em 0;
     font-weight: bold;
 }
 
@@ -82,63 +82,42 @@ body {
 
 .page hr {
     border: none;
-    border-top: 1px solid var(--separator-color); /* Use variable */
+    border-top: 1px solid var(--separator-color);
     margin: 20px auto;
     width: 50%;
 }
 
+/* Fix italics styling */
 .page em {
     font-style: italic;
 }
+
 
 /* Hide right page by default on mobile */
 #page-right {
     display: none;
 }
 
-#navigation {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 10px;
-    margin-top: auto;
-    background-color: var(--navigation-bg); /* Use variable */
-    transition: background-color 0.3s; /* Smooth theme transition */
-}
+/* Remove navigation bar styles */
+/* #navigation { ... } */
+/* #navigation button { ... } */
+/* #navigation button:disabled { ... } */
+/* #page-info { ... } */
 
-/* Hide default buttons, style arrows */
-#navigation button {
-   background: none;
-   border: none;
-   font-size: 2em; /* Make arrows larger */
-   cursor: pointer;
-   color: var(--text-color); /* Use variable for color */
-   padding: 0 10px;
-   transition: color 0.3s; /* Smooth theme transition */
-}
 
-#navigation button:disabled {
-    color: #aaa; /* Dim disabled arrows */
-    cursor: not-allowed;
-}
-
-#page-info {
-    margin: 0 20px;
-}
-
-/* Loading Area Styles (same as before) */
+/* Loading Area Styles */
 #loading-area {
     text-align: center;
     margin-top: 50px;
     padding: 20px;
-    border: 1px solid var(--page-border-color); /* Use variable */
-    background-color: var(--page-background); /* Use variable */
-    color: var(--text-color); /* Use variable */
+    border: 1px solid var(--page-border-color);
+    background-color: var(--page-background);
+    color: var(--text-color);
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .load-option {
@@ -152,42 +131,67 @@ body {
 #url-input {
     padding: 8px;
     margin-right: 5px;
-    width: 60%;
-    background-color: var(--background-color); /* Use variable */
-    color: var(--text-color); /* Use variable */
-    border: 1px solid var(--page-border-color); /* Use variable */
-    transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
+    width: calc(60% - 18px); /* Adjust width to account for padding/border */
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--page-border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 #load-url {
     padding: 8px 15px;
     cursor: pointer;
-    background-color: var(--navigation-bg); /* Use variable */
-    color: var(--text-color); /* Use variable */
-    border: 1px solid var(--page-border-color); /* Use variable */
-     transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
+    background-color: var(--navigation-bg);
+    color: var(--text-color);
+    border: 1px solid var(--page-border-color);
+     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 #loading-status {
-    color: var(--text-color); /* Use variable */
+    color: var(--text-color);
     font-style: italic;
-     transition: color 0.3s; /* Smooth theme transition */
+     transition: color 0.3s;
 }
 
-/* Ensure book container and navigation are visible when book is loaded */
+/* Style for saved books list */
+#saved-books-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+    max-height: 150px; /* Limit height and add scroll if many books */
+    overflow-y: auto;
+    border: 1px solid var(--page-border-color);
+    background-color: var(--background-color);
+}
+
+#saved-books-list li {
+    padding: 8px;
+    border-bottom: 1px solid var(--page-border-color);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+}
+
+#saved-books-list li:last-child {
+    border-bottom: none;
+}
+
+#saved-books-list li:hover {
+    background-color: var(--navigation-bg); /* Use navigation background color for hover effect */
+}
+
+
+/* Ensure book container and menu toggle are visible when book is loaded */
 body.book-loaded #loading-area {
     display: none;
 }
 
 body.book-loaded #book-container {
     display: flex !important;
-     /* Add vertical separator line on desktop */
-    position: relative; /* Needed for absolute positioning of the line */
 }
 
-body.book-loaded #navigation {
-    display: flex !important;
-}
+/* Removed body.book-loaded #navigation { display: flex !important; } */
 
 body.book-loaded #menu-toggle {
     display: block !important;
@@ -202,8 +206,7 @@ body.book-loaded #menu-toggle {
 
     .page {
         flex-basis: 48%;
-        max-height: 80vh;
-        /* No border, content fills space */
+        max-height: calc(100vh - 40px); /* Adjust max-height as nav is removed */
         border: none;
         box-shadow: none;
     }
@@ -216,13 +219,13 @@ body.book-loaded #menu-toggle {
     #book-container::after {
         content: '';
         position: absolute;
-        top: 0;
-        bottom: 0;
+        top: 20px; /* Align with page padding */
+        bottom: 20px; /* Align with page padding */
         left: 50%;
         width: 1px;
-        background-color: var(--separator-color); /* Use variable */
+        background-color: var(--separator-color);
         transform: translateX(-50%);
-        transition: background-color 0.3s; /* Smooth theme transition */
+        transition: background-color 0.3s;
     }
 }
 
@@ -234,30 +237,32 @@ body.book-loaded #menu-toggle {
     right: 20px;
     font-size: 2em;
     cursor: pointer;
-    z-index: 1001; /* Above other content */
-    color: var(--text-color); /* Use variable */
-    transition: color 0.3s; /* Smooth theme transition */
+    z-index: 1001;
+    color: var(--text-color);
+    transition: color 0.3s;
+    line-height: 1; /* Prevent extra space below icon */
 }
 
 #side-menu {
     position: fixed;
     top: 0;
     right: 0;
-    width: 250px; /* Adjust as needed */
+    width: 280px; /* Increased width slightly */
     height: 100%;
-    background-color: var(--page-background); /* Use variable */
-    color: var(--text-color); /* Use variable */
+    background-color: var(--page-background);
+    color: var(--text-color);
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-    z-index: 1000; /* Above book content */
+    z-index: 1000;
     padding: 20px;
     box-sizing: border-box;
     transition: right 0.3s ease-in-out, background-color 0.3s, color 0.3s;
     display: flex;
     flex-direction: column;
+    overflow-y: auto; /* Allow menu to scroll if content is long */
 }
 
 #side-menu.hidden {
-    right: -250px; /* Hide the menu off-screen */
+    right: -280px; /* Adjust hidden position */
 }
 
 #menu-header {
@@ -276,8 +281,9 @@ body.book-loaded #menu-toggle {
     border: none;
     font-size: 1.5em;
     cursor: pointer;
-    color: var(--text-color); /* Use variable */
-     transition: color 0.3s; /* Smooth theme transition */
+    color: var(--text-color);
+     transition: color 0.3s;
+     line-height: 1; /* Prevent extra space below icon */
 }
 
 .menu-section {
@@ -295,6 +301,12 @@ body.book-loaded #menu-toggle {
     cursor: pointer;
 }
 
+/* Progress section specific styling */
+#progress-section #menu-page-info {
+    font-weight: bold;
+}
+
+
 /* Overlay styles */
 #overlay {
     position: fixed;
@@ -303,7 +315,7 @@ body.book-loaded #menu-toggle {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999; /* Below menu, above book content */
+    z-index: 999;
     transition: opacity 0.3s ease-in-out;
 }
 
@@ -314,12 +326,19 @@ body.book-loaded #menu-toggle {
 
 /* System Theme - Dark mode preference */
 @media (prefers-color-scheme: dark) {
-    body.system-theme:not(.light-theme) { /* Apply only if system theme is selected and light theme is not forced */
+    body.system-theme:not(.light-theme) {
         --background-color: #222;
         --text-color: #eee;
         --page-background: #333;
         --page-border-color: #555;
         --separator-color: #666;
-        --navigation-bg: #444;
+        --navigation-bg: #444; /* Keep nav-bg variable for hover on list items */
+    }
+}
+
+/* Responsive adjustment for pages on smaller screens */
+@media (max-width: 767px) {
+    .page {
+        max-height: calc(100vh - 40px); /* Adjust max-height as nav is removed */
     }
 }
