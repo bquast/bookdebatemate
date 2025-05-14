@@ -28,11 +28,27 @@
     </div>
 
     <div id="navigation" style="display: none;">
-        <button id="prev-page">Previous</button>
+        <button id="prev-page" class="nav-arrow"><span>&lt;</span></button>
         <span id="page-info"></span>
-        <button id="next-page">Next</button>
+        <button id="next-page" class="nav-arrow"><span>&gt;</span></button>
     </div>
 
-    <script src="script.js"></script>
+    <div id="menu-toggle" style="display: none;">
+        &#x2261; </div>
+
+    <div id="side-menu" class="hidden">
+        <div id="menu-header">
+            <h3>Settings</h3>
+            <button id="close-menu">&times;</button>
+        </div>
+        <div class="menu-section">
+            <h4>Appearance</h4>
+            <label><input type="radio" name="theme" value="light"> Light</label><br>
+            <label><input type="radio" name="theme" value="dark"> Dark</label><br>
+            <label><input type="radio" name="theme" value="system"> System</label>
+        </div>
+    </div>
+
+    <div id="overlay" class="hidden"></div> <script src="script.js"></script>
 </body>
 </html>

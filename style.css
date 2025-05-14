@@ -1,36 +1,75 @@
+/* Root variables for themes */
+:root {
+    --background-color: #f8f8f8;
+    --text-color: #333;
+    --page-background: #fff;
+    --page-border-color: #ddd;
+    --separator-color: #ccc;
+    --navigation-bg: #eee;
+}
+
+/* Dark theme */
+.dark-theme {
+    --background-color: #222;
+    --text-color: #eee;
+    --page-background: #333;
+    --page-border-color: #555;
+    --separator-color: #666;
+    --navigation-bg: #444;
+}
+
 body {
     margin: 0;
-    font-family: serif; /* A common book font style */
+    font-family: serif;
     line-height: 1.6;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: #f8f8f8;
-    color: #333;
-    padding: 10px;
+    background-color: var(--background-color); /* Use variable */
+    color: var(--text-color); /* Use variable */
+    padding: 0; /* Remove padding, use padding on book-container */
     box-sizing: border-box;
+    transition: background-color 0.3s, color 0.3s; /* Smooth theme transition */
 }
 
 #book-container {
-    flex-grow: 1; /* Allows book container to take available space */
+    flex-grow: 1;
     display: flex;
-    justify-content: center; /* Center pages horizontally */
+    justify-content: center;
     padding: 20px;
-    gap: 20px; /* Space between pages on desktop */
-    overflow: hidden; /* Prevent scrolling within the container */
+    gap: 20px;
+    overflow: hidden;
     box-sizing: border-box;
 }
 
 .page {
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: var(--page-background); /* Use variable */
+    /* Remove border for simpler look */
+    /* border: 1px solid var(--page-border-color); */
     padding: 20px;
-    overflow-y: auto; /* Enable scrolling within a page if content exceeds height */
+    overflow-y: auto;
     box-sizing: border-box;
-    max-width: 100%; /* Default to full width on small screens */
+    max-width: 100%;
+    scrollbar-width: none; /* Hide scrollbar for aesthetics */
+    -ms-overflow-style: none; /* IE 10+ */
 }
 
+.page::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Webkit browsers */
+}
+
+
 /* Basic Markdown Styling */
+/* Add styles for the section number */
+.page .section-number {
+    display: block; /* Display as a block to be on its own line */
+    text-align: center;
+    font-size: 1.1em;
+    margin: 1em 0; /* Add some space around it */
+    font-weight: bold;
+}
+
+
 .page h1, .page h2, .page h3 {
     text-align: center;
     margin-top: 1.5em;
@@ -43,7 +82,7 @@ body {
 
 .page hr {
     border: none;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid var(--separator-color); /* Use variable */
     margin: 20px auto;
     width: 50%;
 }
@@ -62,41 +101,44 @@ body {
     justify-content: center;
     align-items: center;
     padding: 10px;
-    margin-top: auto; /* Push navigation to the bottom */
+    margin-top: auto;
+    background-color: var(--navigation-bg); /* Use variable */
+    transition: background-color 0.3s; /* Smooth theme transition */
 }
 
+/* Hide default buttons, style arrows */
 #navigation button {
-    padding: 10px 15px;
-    margin: 0 10px;
-    cursor: pointer;
+   background: none;
+   border: none;
+   font-size: 2em; /* Make arrows larger */
+   cursor: pointer;
+   color: var(--text-color); /* Use variable for color */
+   padding: 0 10px;
+   transition: color 0.3s; /* Smooth theme transition */
 }
 
-/* Desktop view: Two pages side-by-side */
-@media (min-width: 768px) {
-    #book-container {
-        flex-direction: row;
-    }
-
-    .page {
-        flex-basis: 48%; /* Allocate space for two pages */
-        max-height: 80vh; /* Limit height to prevent pages becoming too tall */
-    }
-
-    #page-right {
-        display: block; /* Show right page on desktop */
-    }
+#navigation button:disabled {
+    color: #aaa; /* Dim disabled arrows */
+    cursor: not-allowed;
 }
 
+#page-info {
+    margin: 0 20px;
+}
+
+/* Loading Area Styles (same as before) */
 #loading-area {
     text-align: center;
     margin-top: 50px;
     padding: 20px;
-    border: 1px solid #ddd;
-    background-color: #fff;
+    border: 1px solid var(--page-border-color); /* Use variable */
+    background-color: var(--page-background); /* Use variable */
+    color: var(--text-color); /* Use variable */
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
 }
 
 .load-option {
@@ -111,16 +153,25 @@ body {
     padding: 8px;
     margin-right: 5px;
     width: 60%;
+    background-color: var(--background-color); /* Use variable */
+    color: var(--text-color); /* Use variable */
+    border: 1px solid var(--page-border-color); /* Use variable */
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
 }
 
 #load-url {
     padding: 8px 15px;
     cursor: pointer;
+    background-color: var(--navigation-bg); /* Use variable */
+    color: var(--text-color); /* Use variable */
+    border: 1px solid var(--page-border-color); /* Use variable */
+     transition: background-color 0.3s, color 0.3s, border-color 0.3s; /* Smooth theme transition */
 }
 
 #loading-status {
-    color: #555;
+    color: var(--text-color); /* Use variable */
     font-style: italic;
+     transition: color 0.3s; /* Smooth theme transition */
 }
 
 /* Ensure book container and navigation are visible when book is loaded */
@@ -128,7 +179,147 @@ body.book-loaded #loading-area {
     display: none;
 }
 
-body.book-loaded #book-container,
+body.book-loaded #book-container {
+    display: flex !important;
+     /* Add vertical separator line on desktop */
+    position: relative; /* Needed for absolute positioning of the line */
+}
+
 body.book-loaded #navigation {
-    display: flex !important; /* Use !important to override initial style="display: none;" */
+    display: flex !important;
+}
+
+body.book-loaded #menu-toggle {
+    display: block !important;
+}
+
+
+/* Desktop view: Two pages side-by-side */
+@media (min-width: 768px) {
+    #book-container {
+        flex-direction: row;
+    }
+
+    .page {
+        flex-basis: 48%;
+        max-height: 80vh;
+        /* No border, content fills space */
+        border: none;
+        box-shadow: none;
+    }
+
+    #page-right {
+        display: block;
+    }
+
+    /* Vertical line separator */
+    #book-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        background-color: var(--separator-color); /* Use variable */
+        transform: translateX(-50%);
+        transition: background-color 0.3s; /* Smooth theme transition */
+    }
+}
+
+
+/* Side Menu Styles */
+#menu-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: 2em;
+    cursor: pointer;
+    z-index: 1001; /* Above other content */
+    color: var(--text-color); /* Use variable */
+    transition: color 0.3s; /* Smooth theme transition */
+}
+
+#side-menu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 250px; /* Adjust as needed */
+    height: 100%;
+    background-color: var(--page-background); /* Use variable */
+    color: var(--text-color); /* Use variable */
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000; /* Above book content */
+    padding: 20px;
+    box-sizing: border-box;
+    transition: right 0.3s ease-in-out, background-color 0.3s, color 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+
+#side-menu.hidden {
+    right: -250px; /* Hide the menu off-screen */
+}
+
+#menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#menu-header h3 {
+    margin: 0;
+}
+
+#close-menu {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: var(--text-color); /* Use variable */
+     transition: color 0.3s; /* Smooth theme transition */
+}
+
+.menu-section {
+    margin-bottom: 20px;
+}
+
+.menu-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.menu-section label {
+    display: block;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+/* Overlay styles */
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999; /* Below menu, above book content */
+    transition: opacity 0.3s ease-in-out;
+}
+
+#overlay.hidden {
+    display: none;
+    opacity: 0;
+}
+
+/* System Theme - Dark mode preference */
+@media (prefers-color-scheme: dark) {
+    body.system-theme:not(.light-theme) { /* Apply only if system theme is selected and light theme is not forced */
+        --background-color: #222;
+        --text-color: #eee;
+        --page-background: #333;
+        --page-border-color: #555;
+        --separator-color: #666;
+        --navigation-bg: #444;
+    }
 }
