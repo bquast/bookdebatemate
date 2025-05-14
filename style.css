@@ -1,0 +1,134 @@
+body {
+    margin: 0;
+    font-family: serif; /* A common book font style */
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8f8f8;
+    color: #333;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#book-container {
+    flex-grow: 1; /* Allows book container to take available space */
+    display: flex;
+    justify-content: center; /* Center pages horizontally */
+    padding: 20px;
+    gap: 20px; /* Space between pages on desktop */
+    overflow: hidden; /* Prevent scrolling within the container */
+    box-sizing: border-box;
+}
+
+.page {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 20px;
+    overflow-y: auto; /* Enable scrolling within a page if content exceeds height */
+    box-sizing: border-box;
+    max-width: 100%; /* Default to full width on small screens */
+}
+
+/* Basic Markdown Styling */
+.page h1, .page h2, .page h3 {
+    text-align: center;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.page h1 { font-size: 2em; }
+.page h2 { font-size: 1.5em; }
+.page h3 { font-size: 1.2em; }
+
+.page hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 20px auto;
+    width: 50%;
+}
+
+.page em {
+    font-style: italic;
+}
+
+/* Hide right page by default on mobile */
+#page-right {
+    display: none;
+}
+
+#navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    margin-top: auto; /* Push navigation to the bottom */
+}
+
+#navigation button {
+    padding: 10px 15px;
+    margin: 0 10px;
+    cursor: pointer;
+}
+
+/* Desktop view: Two pages side-by-side */
+@media (min-width: 768px) {
+    #book-container {
+        flex-direction: row;
+    }
+
+    .page {
+        flex-basis: 48%; /* Allocate space for two pages */
+        max-height: 80vh; /* Limit height to prevent pages becoming too tall */
+    }
+
+    #page-right {
+        display: block; /* Show right page on desktop */
+    }
+}
+
+#loading-area {
+    text-align: center;
+    margin-top: 50px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.load-option {
+    margin-bottom: 20px;
+}
+
+.load-option h3 {
+    margin-top: 0;
+}
+
+#url-input {
+    padding: 8px;
+    margin-right: 5px;
+    width: 60%;
+}
+
+#load-url {
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+#loading-status {
+    color: #555;
+    font-style: italic;
+}
+
+/* Ensure book container and navigation are visible when book is loaded */
+body.book-loaded #loading-area {
+    display: none;
+}
+
+body.book-loaded #book-container,
+body.book-loaded #navigation {
+    display: flex !important; /* Use !important to override initial style="display: none;" */
+}

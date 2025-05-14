@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmark Renderer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="loading-area">
+        <h2>Load a Markdown Book</h2>
+        <div class="load-option">
+            <h3>From your computer:</h3>
+            <input type="file" id="file-input" accept=".md">
+        </div>
+        <div class="load-option">
+            <h3>From a URL:</h3>
+            <input type="text" id="url-input" placeholder="Enter markdown file URL">
+            <button id="load-url">Load URL</button>
+        </div>
+        <p id="loading-status"></p>
+    </div>
+
+    <div id="book-container" style="display: none;">
+        <div id="page-left" class="page"></div>
+        <div id="page-right" class="page"></div>
+    </div>
+
+    <div id="navigation" style="display: none;">
+        <button id="prev-page">Previous</button>
+        <span id="page-info"></span>
+        <button id="next-page">Next</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
