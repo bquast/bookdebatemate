@@ -5,7 +5,6 @@
     --page-background: #fff;
     --page-border-color: #ddd;
     --separator-color: #ccc;
-    /* --navigation-bg: #eee; Removed */
 }
 
 /* Dark theme */
@@ -15,7 +14,6 @@
     --page-background: #333;
     --page-border-color: #555;
     --separator-color: #666;
-    /* --navigation-bg: #444; Removed */
 }
 
 body {
@@ -27,7 +25,7 @@ body {
     min-height: 100vh;
     background-color: var(--background-color);
     color: var(--text-color);
-    padding: 0; /* Adjust padding as navigation bar is removed */
+    padding: 0;
     box-sizing: border-box;
     transition: background-color 0.3s, color 0.3s;
 }
@@ -36,12 +34,12 @@ body {
     flex-grow: 1;
     display: flex;
     justify-content: center;
-    /* Adjust padding after removing bottom nav */
-    padding: 20px 20px 20px 20px; /* Top Right Bottom Left */
+    /* Adjust padding after removing bottom nav (only top/bottom padding needed for vertical spacing) */
+    padding: 20px;
     gap: 20px;
     overflow: hidden;
     box-sizing: border-box;
-    position: relative; /* Needed for absolute positioning of the line */
+    position: relative;
 }
 
 .page {
@@ -60,7 +58,6 @@ body {
 
 
 /* Basic Markdown Styling */
-/* Style for the section number (now just the number) */
 .page .section-number {
     display: block;
     text-align: center;
@@ -87,7 +84,6 @@ body {
     width: 50%;
 }
 
-/* Fix italics styling */
 .page em {
     font-style: italic;
 }
@@ -98,11 +94,7 @@ body {
     display: none;
 }
 
-/* Remove navigation bar styles */
-/* #navigation { ... } */
-/* #navigation button { ... } */
-/* #navigation button:disabled { ... } */
-/* #page-info { ... } */
+/* Removed navigation bar styles */
 
 
 /* Loading Area Styles */
@@ -131,8 +123,8 @@ body {
 #url-input {
     padding: 8px;
     margin-right: 5px;
-    width: calc(60% - 18px); /* Adjust width to account for padding/border */
-    box-sizing: border-box; /* Include padding and border in element's total width and height */
+    width: calc(60% - 18px);
+    box-sizing: border-box;
     background-color: var(--background-color);
     color: var(--text-color);
     border: 1px solid var(--page-border-color);
@@ -159,7 +151,7 @@ body {
     list-style: none;
     padding: 0;
     margin: 10px 0;
-    max-height: 150px; /* Limit height and add scroll if many books */
+    max-height: 150px;
     overflow-y: auto;
     border: 1px solid var(--page-border-color);
     background-color: var(--background-color);
@@ -178,7 +170,7 @@ body {
 }
 
 #saved-books-list li:hover {
-    background-color: var(--navigation-bg); /* Use navigation background color for hover effect */
+    background-color: var(--navigation-bg);
 }
 
 
@@ -190,8 +182,6 @@ body.book-loaded #loading-area {
 body.book-loaded #book-container {
     display: flex !important;
 }
-
-/* Removed body.book-loaded #navigation { display: flex !important; } */
 
 body.book-loaded #menu-toggle {
     display: block !important;
@@ -206,7 +196,8 @@ body.book-loaded #menu-toggle {
 
     .page {
         flex-basis: 48%;
-        max-height: calc(100vh - 40px); /* Adjust max-height as nav is removed */
+        /* Adjust max-height based on removed bottom nav */
+        max-height: calc(100vh - 40px);
         border: none;
         box-shadow: none;
     }
@@ -219,8 +210,8 @@ body.book-loaded #menu-toggle {
     #book-container::after {
         content: '';
         position: absolute;
-        top: 20px; /* Align with page padding */
-        bottom: 20px; /* Align with page padding */
+        top: 20px;
+        bottom: 20px;
         left: 50%;
         width: 1px;
         background-color: var(--separator-color);
@@ -240,14 +231,14 @@ body.book-loaded #menu-toggle {
     z-index: 1001;
     color: var(--text-color);
     transition: color 0.3s;
-    line-height: 1; /* Prevent extra space below icon */
+    line-height: 1;
 }
 
 #side-menu {
     position: fixed;
     top: 0;
     right: 0;
-    width: 280px; /* Increased width slightly */
+    width: 280px;
     height: 100%;
     background-color: var(--page-background);
     color: var(--text-color);
@@ -258,33 +249,19 @@ body.book-loaded #menu-toggle {
     transition: right 0.3s ease-in-out, background-color 0.3s, color 0.3s;
     display: flex;
     flex-direction: column;
-    overflow-y: auto; /* Allow menu to scroll if content is long */
+    overflow-y: auto;
 }
 
 #side-menu.hidden {
-    right: -280px; /* Adjust hidden position */
+    right: -280px;
 }
 
-#menu-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
+/* Removed menu-header styles */
+/* #menu-header { ... } */
+/* #menu-header h3 { ... } */
+/* Removed close-menu styles */
+/* #close-menu { ... } */
 
-#menu-header h3 {
-    margin: 0;
-}
-
-#close-menu {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    color: var(--text-color);
-     transition: color 0.3s;
-     line-height: 1; /* Prevent extra space below icon */
-}
 
 .menu-section {
     margin-bottom: 20px;
@@ -293,6 +270,13 @@ body.book-loaded #menu-toggle {
 .menu-section h4 {
     margin-top: 0;
     margin-bottom: 10px;
+}
+
+/* New style for subsection title */
+.menu-subsection h5 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 1em; /* Slightly smaller than section title */
 }
 
 .menu-section label {
@@ -332,13 +316,14 @@ body.book-loaded #menu-toggle {
         --page-background: #333;
         --page-border-color: #555;
         --separator-color: #666;
-        --navigation-bg: #444; /* Keep nav-bg variable for hover on list items */
+        --navigation-bg: #444;
     }
 }
 
 /* Responsive adjustment for pages on smaller screens */
 @media (max-width: 767px) {
     .page {
-        max-height: calc(100vh - 40px); /* Adjust max-height as nav is removed */
+        /* Adjust max-height based on removed bottom nav */
+        max-height: calc(100vh - 40px);
     }
 }

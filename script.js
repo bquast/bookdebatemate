@@ -9,12 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookContainer = document.getElementById('book-container');
     const pageLeft = document.getElementById('page-left');
     const pageRight = document.getElementById('page-right');
-    // const prevButton = document.getElementById('prev-page'); Removed
-    // const nextButton = document.getElementById('next-page'); Removed
-    // const pageInfoSpan = document.getElementById('page-info'); Removed
     const menuToggle = document.getElementById('menu-toggle');
     const sideMenu = document.getElementById('side-menu');
-    const closeMenuButton = document.getElementById('close-menu');
+    // const closeMenuButton = document.getElementById('close-menu'); Removed
     const themeRadios = document.querySelectorAll('input[name="theme"]');
     const overlay = document.getElementById('overlay');
     const menuPageInfo = document.getElementById('menu-page-info');
@@ -32,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const bookData = {
                 title: title,
                 markdown: markdownText,
-                lastPage: 0 // Save initial page
+                lastPage: currentPage // Save current page, not just 0
             };
             localStorage.setItem(localStorageKeyPrefix + title, JSON.stringify(bookData));
             console.log(`Book "${title}" saved to local storage.`);
@@ -107,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             listSavedBooks(); // Refresh the list
+            // If the currently loaded book was cleared, go back to loading screen
+            if (!currentlyLoadedBookTitle || !localStorage.getItem(localStorageKeyPrefix + currentlyLoadedBookTitle)) {
+                 showLoadingArea();
+            }
         }
     }
 
@@ -169,17 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         for (const line of lines) {
-            // Check for the _Translated By Thomas Common_ pattern (simple full line italic)
-            if (line.trim().startsWith('_') && line.trim().endsWith('_') && line.trim().length > 1) {
-                 addBlock(); // Add any preceding block
-                 // Ensure it's not just an underscore
-                 if (line.trim() !== '_') {
-                    parsedContent.push(`<em>${line.trim().substring(1, line.trim().length - 1)}</em>`);
-                 } else {
-                     parsedContent.push(line); // Keep single underscore as is
-                 }
+            const trimmedLine = line.trim();
 
-            } else if (line.trim() === '') {
+            // Check for the _Translated By Thomas Common_ pattern (simple full line italic)
+             // Ensure it's not just an underscore and is the entire trimmed line
+            if (trimmedLine.startsWith('_') && trimmedLine.endsWith('_') && trimmedLine.length > 1 && trimmedLine.indexOf(' ') === -1) {
+                 addBlock(); // Add any preceding block
+                 parsedContent.push(`<em>${trimmedLine.substring(1, trimmedLine.length - 1)}</em>`);
+
+            } else if (trimmedLine === '') {
                 // Blank line, ends a paragraph block
                 addBlock();
             } else if (line.startsWith('#')) {
@@ -221,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDesktop = window.innerWidth >= 768;
         // No navigation bar height to subtract anymore
         const availableHeight = window.innerHeight - 40; // Viewport height - some margin
-        const pageHeight = availableHeight / (isDesktop ? 1 : 1); // On desktop, we still calculate based on single page height for simpler logic, the layout handles two pages.
+        const pageHeight = availableHeight; // Use full height for pagination calculation
         const pageWidth = (window.innerWidth / (isDesktop ? 2 : 1)) - 80; // Viewport width / pages per view - some margin
 
         // Helper to estimate element height
@@ -239,8 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Include estimated margins for block elements
              if (elementHTML.startsWith('<h')) tempDiv.style.marginTop = tempDiv.style.marginBottom = '0.5em';
              if (elementHTML === '<hr>') tempDiv.style.marginTop = tempDiv.style.marginBottom = '20px';
-             // Check if it's a paragraph or section number to apply bottom margin
-             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">')) tempDiv.style.marginBottom = '1.6em'; // Estimate paragraph/block spacing
+             // Check if it's a paragraph or section number or italic to apply bottom margin
+             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">') || elementHTML.startsWith('<em>')) tempDiv.style.marginBottom = '1.6em'; // Estimate paragraph/block spacing
 
 
             tempDiv.innerHTML = elementHTML;
@@ -284,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pages.length > 0) {
              const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
              const displayPageEnd = isDesktop ? Math.min((pageIndex * 2) + 2, pages.length) : pageIndex + 1;
-            menuPageInfo.textContent = `Page ${displayPageStart}${isDesktop ? '-' + displayPageEnd : ''} of ${pages.length}`;
+            menuPageInfo.textContent = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${pages.length}`;
              progressSection.style.display = 'block'; // Show progress section
         } else {
              menuPageInfo.textContent = "Page 0 of 0";
@@ -340,8 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Failed to save current page to local storage:", e);
             }
         }
-
-
     }
 
      // --- Navigation ---
@@ -385,8 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Allow Escape key to close menu
          if (event.key === 'Escape') {
              if (!sideMenu.classList.contains('hidden')) {
-                 sideMenu.classList.add('hidden');
-                 overlay.classList.add('hidden');
+                 closeMenu();
              }
          }
     });
@@ -394,6 +390,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Load Content and Initialize ---
     let currentlyLoadedBookTitle = null; // To track the currently loaded book for saving progress
+
+    // Function to show the loading area and hide book/menu
+    function showLoadingArea() {
+        loadingArea.style.display = 'block';
+        bookContainer.style.display = 'none';
+        menuToggle.style.display = 'none';
+        sideMenu.classList.add('hidden'); // Ensure menu is closed
+        overlay.classList.add('hidden'); // Ensure overlay is hidden
+        document.body.classList.remove('book-loaded');
+        currentlyLoadedBookTitle = null;
+        listSavedBooks(); // Refresh the list in case something was cleared
+    }
 
     function loadContent(markdownText, initialPage = 0) {
         loadingStatus.textContent = 'Parsing content...';
@@ -412,8 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPage(currentPage);
             loadingArea.style.display = 'none';
             bookContainer.style.display = 'flex'; // Show book container
-            // document.getElementById('navigation').style.display = 'flex'; Removed navigation
-             menuToggle.style.display = 'block'; // Show menu toggle
+            menuToggle.style.display = 'block'; // Show menu toggle
             document.body.classList.add('book-loaded'); // Add class to body
             loadingStatus.textContent = ''; // Clear status
              // Identify book title for saving progress
@@ -424,12 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingStatus.textContent = 'Could not process book content or book is empty.';
             menuPageInfo.textContent = "Page 0 of 0"; // Update menu progress
             progressSection.style.display = 'none'; // Hide progress section
-             loadingArea.style.display = 'block'; // Keep loading area visible
-             bookContainer.style.display = 'none';
-             // document.getElementById('navigation').style.display = 'none'; Removed navigation
-             menuToggle.style.display = 'none'; // Hide menu toggle
-             document.body.classList.remove('book-loaded'); // Remove class from body
-             currentlyLoadedBookTitle = null; // Reset loaded book title
+             showLoadingArea(); // Go back to loading area on failure
         }
          closeMenu(); // Close menu after loading content
 
@@ -493,8 +495,16 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.add('hidden');
     }
 
-    menuToggle.addEventListener('click', openMenu);
-    closeMenuButton.addEventListener('click', closeMenu);
+    // Toggle menu: if hidden, open; if open, close
+    menuToggle.addEventListener('click', () => {
+        if (sideMenu.classList.contains('hidden')) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    });
+
+    // closeMenuButton.addEventListener('click', closeMenu); Removed
     overlay.addEventListener('click', closeMenu);
 
 
@@ -505,8 +515,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-
-    // Event listeners for navigation buttons (removed)
 
      // Re-paginate and re-render on window resize
     window.addEventListener('resize', () => {
@@ -531,13 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
         applySavedTheme(); // Apply saved theme preference
         listSavedBooks(); // List saved books on the loading page
 
-        // Initial state (nothing loaded yet)
-         loadingStatus.textContent = 'Ready to load.';
-         bookContainer.style.display = 'none';
-         // document.getElementById('navigation').style.display = 'none'; Removed navigation
-         menuToggle.style.display = 'none'; // Hide menu toggle until book is loaded
-         sideMenu.classList.add('hidden'); // Ensure menu is hidden initially
-         overlay.classList.add('hidden'); // Ensure overlay is hidden initially
+        // Initial state (show loading area)
+         showLoadingArea();
 
          // Add event listener for clearing saved books
          clearSavedBooksButton.addEventListener('click', clearSavedBooks);
