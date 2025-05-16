@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageRight = document.getElementById('page-right');
     const menuToggle = document.getElementById('menu-toggle');
     const sideMenu = document.getElementById('side-menu');
-    // const closeMenuButton = document.getElementById('close-menu'); Removed
     const themeRadios = document.querySelectorAll('input[name="theme"]');
     const overlay = document.getElementById('overlay');
     const menuPageInfo = document.getElementById('menu-page-info');
@@ -29,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const bookData = {
                 title: title,
                 markdown: markdownText,
-                lastPage: currentPage // Save current page, not just 0
+                lastPage: currentPage // Save current page
             };
             localStorage.setItem(localStorageKeyPrefix + title, JSON.stringify(bookData));
             console.log(`Book "${title}" saved to local storage.`);
@@ -157,14 +156,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function addBlock() {
             if (currentBlock.trim() !== '') {
+                 const trimmedBlock = currentBlock.trim();
+
+                 // Check for block italics (whole line wrapped in single underscores)
+                 // Use a regex to be more robust
+                 const italicBlockMatch = trimmedBlock.match(/^\_([^_]+)\_$/);
+                 if (italicBlockMatch && italicBlockMatch[1].trim().length > 0) {
+                     parsedContent.push(`<em>${italicBlockMatch[1].trim()}</em>`);
+
                  // Check for the *number* pattern at the beginning of a paragraph block
-                const sectionMatch = currentBlock.match(/^\*(\d+)\*\s*/);
-                if (sectionMatch) {
-                    // Render as just the number inside the span
-                    parsedContent.push(`<span class="section-number">${sectionMatch[1]}</span>` + currentBlock.substring(sectionMatch[0].length).trim());
-                } else {
-                    parsedContent.push(currentBlock.trim());
-                }
+                 } else {
+                     const sectionMatch = trimmedBlock.match(/^\*(\d+)\*\s*/);
+                     if (sectionMatch) {
+                        // Render as just the number inside the span
+                        parsedContent.push(`<span class="section-number">${sectionMatch[1]}</span>` + trimmedBlock.substring(sectionMatch[0].length).trim());
+                     } else {
+                         // Regular paragraph
+                         parsedContent.push(trimmedBlock);
+                     }
+                 }
+
                 currentBlock = '';
             }
         }
@@ -172,13 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const line of lines) {
             const trimmedLine = line.trim();
 
-            // Check for the _Translated By Thomas Common_ pattern (simple full line italic)
-             // Ensure it's not just an underscore and is the entire trimmed line
-            if (trimmedLine.startsWith('_') && trimmedLine.endsWith('_') && trimmedLine.length > 1 && trimmedLine.indexOf(' ') === -1) {
-                 addBlock(); // Add any preceding block
-                 parsedContent.push(`<em>${trimmedLine.substring(1, trimmedLine.length - 1)}</em>`);
 
-            } else if (trimmedLine === '') {
+            if (trimmedLine === '') {
                 // Blank line, ends a paragraph block
                 addBlock();
             } else if (line.startsWith('#')) {
@@ -192,14 +198,19 @@ document.addEventListener('DOMContentLoaded', () => {
                  parsedContent.push('<hr>'); // Add the HR as HTML
             }
              else {
-                // Paragraph text
+                // Paragraph text (can include lines for block italics before addBlock)
                 if (currentBlock !== '') {
-                    currentBlock += ' '; // Add space between lines in the same block
+                    currentBlock += '\n'; // Keep newline within a block for proper italic detection later if needed
                 }
                 currentBlock += line;
             }
         }
         addBlock(); // Add the last block
+
+        // After getting blocks, process paragraphs for potential inline italics (optional, but good practice)
+        // This specific book format doesn't seem to use inline italics much,
+        // but this would be the place to add a replace for _word_ or _multiple words_ within <p> tags.
+        // For now, the block italic logic should handle the "Translated By Thomas Common" case.
 
         console.log("Parsed Content:", parsedContent); // Log parsed content for debugging
         return parsedContent;
@@ -219,40 +230,60 @@ document.addEventListener('DOMContentLoaded', () => {
         // Get current page dimensions (dynamic based on window size)
         const isDesktop = window.innerWidth >= 768;
         // No navigation bar height to subtract anymore
-        const availableHeight = window.innerHeight - 40; // Viewport height - some margin
-        const pageHeight = availableHeight; // Use full height for pagination calculation
-        const pageWidth = (window.innerWidth / (isDesktop ? 2 : 1)) - 80; // Viewport width / pages per view - some margin
+        const pagePadding = 20; // Padding on the .page element
+        const bookContainerPadding = 20; // Padding on the #book-container
+        const availableHeight = window.innerHeight - (bookContainerPadding * 2); // Viewport height - total top/bottom padding on container
+        const pageHeight = availableHeight; // Use full available height for pagination calculation
+        const pageWidth = (window.innerWidth / (isDesktop ? 2 : 1)) - (pagePadding * 2); // Viewport width / pages per view - total left/right padding on page
+
 
         // Helper to estimate element height
         function estimateHeight(elementHTML) {
             const tempDiv = document.createElement('div');
             tempDiv.style.position = 'absolute';
             tempDiv.style.visibility = 'hidden';
-            tempDiv.style.width = pageWidth + 'px'; // Constrain width to page width
+            tempDiv.style.width = pageWidth + 'px'; // Constrain width to page width (content area width)
              // Apply relevant text styles for accurate measurement
-            tempDiv.style.fontSize = '1rem';
-            tempDiv.style.lineHeight = '1.6';
-            tempDiv.style.fontFamily = 'serif';
+            tempDiv.style.fontSize = '1rem'; // Base font size
+            tempDiv.style.lineHeight = '1.6'; // Base line height
+            tempDiv.style.fontFamily = 'serif'; // Font family
+             // Ensure padding/margin is consistent with .page content styles (resetting defaults)
             tempDiv.style.padding = '0';
-            tempDiv.style.margin = '0'; // Reset default margins
-            // Include estimated margins for block elements
-             if (elementHTML.startsWith('<h')) tempDiv.style.marginTop = tempDiv.style.marginBottom = '0.5em';
-             if (elementHTML === '<hr>') tempDiv.style.marginTop = tempDiv.style.marginBottom = '20px';
-             // Check if it's a paragraph or section number or italic to apply bottom margin
-             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">') || elementHTML.startsWith('<em>')) tempDiv.style.marginBottom = '1.6em'; // Estimate paragraph/block spacing
+            tempDiv.style.margin = '0';
 
 
             tempDiv.innerHTML = elementHTML;
             document.body.appendChild(tempDiv);
-            const height = tempDiv.getBoundingClientRect().height; // Use getBoundingClientRect for more accurate height including potential margins
+            const height = tempDiv.getBoundingClientRect().height; // Use getBoundingClientRect for more accurate height
             document.body.removeChild(tempDiv);
-            return height;
+
+             // Add estimated margin-bottom based on CSS (use getComputedStyle from a relevant element if possible)
+             // Using a simplified estimation based on 'em' values
+             let estimatedMarginBottom = 0;
+             const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize); // Get root font size
+
+             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">')) {
+                  estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom for paragraphs/section numbers
+             } else if (elementHTML.startsWith('<em>')) { // Add estimation for italic blocks
+                 estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom
+             }
+             else if (elementHTML.startsWith('<h')) {
+                 estimatedMarginBottom = baseFontSize * 0.5; // 0.5em margin-bottom for headings
+             } else if (elementHTML === '<hr>') {
+                 estimatedMarginBottom = 20; // 20px margin for hr
+             }
+             // Add a small buffer per block to account for rounding or minor inconsistencies
+             const blockBuffer = 1; // Adjust as needed
+            return height + estimatedMarginBottom + blockBuffer;
         }
 
         for (const block of content) {
             const blockHeight = estimateHeight(block); // Use the already generated HTML string
 
-            if (currentPageHeight + blockHeight > pageHeight && currentPageContent.length > 0) {
+            // Check if adding the block exceeds current page height
+            // Add a small tolerance to prevent very minor overflows
+            const tolerance = 1; // Pixels
+            if (currentPageHeight + blockHeight > pageHeight + tolerance && currentPageContent.length > 0) {
                 // Start a new page
                 bookPages.push(currentPageContent);
                 currentPageContent = [block]; // Add the block to the new page
@@ -504,7 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // closeMenuButton.addEventListener('click', closeMenu); Removed
     overlay.addEventListener('click', closeMenu);
 
 
