@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // After getting blocks, process paragraphs for potential inline italics (optional, but good practice)
         // This specific book format doesn't seem to use inline italics much,
-        // but this would be the place to add a replace for _word_ or _multiple words_ within <p> tags.
+        // but this would be the place to add a regex replace for _word_ or _multiple words_ within <p> tags.
         // For now, the block italic logic should handle the "Translated By Thomas Common" case.
 
         console.log("Parsed Content:", parsedContent); // Log parsed content for debugging
@@ -262,12 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
              let estimatedMarginBottom = 0;
              const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize); // Get root font size
 
-             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">')) {
-                  estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom for paragraphs/section numbers
-             } else if (elementHTML.startsWith('<em>')) { // Add estimation for italic blocks
-                 estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom
-             }
-             else if (elementHTML.startsWith('<h')) {
+             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">') || elementHTML.startsWith('<em>')) {
+                  estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom for paragraphs/section numbers/italic blocks
+             } else if (elementHTML.startsWith('<h')) {
                  estimatedMarginBottom = baseFontSize * 0.5; // 0.5em margin-bottom for headings
              } else if (elementHTML === '<hr>') {
                  estimatedMarginBottom = 20; // 20px margin for hr
@@ -398,23 +395,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Handle keyboard navigation (left/right arrows for page)
+    // Handle keyboard navigation (left/right arrows for page, space/enter for next)
     document.addEventListener('keydown', (event) => {
         // Check if a book is loaded and menu is closed
         if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
-            if (event.key === 'ArrowRight') {
+            if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') {
                 nextPage();
-                event.preventDefault(); // Prevent default browser scrolling
+                event.preventDefault(); // Prevent default browser behavior (scrolling, button click)
             } else if (event.key === 'ArrowLeft') {
                 prevPage();
                 event.preventDefault(); // Prevent default browser scrolling
             }
         }
-         // Allow Escape key to close menu
+         // Allow Escape key to close menu regardless of book state
          if (event.key === 'Escape') {
              if (!sideMenu.classList.contains('hidden')) {
                  closeMenu();
              }
+         }
+    });
+
+    // Handle mouse click navigation on pages
+    pageLeft.addEventListener('click', () => {
+         if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
+             prevPage();
+         }
+    });
+
+    pageRight.addEventListener('click', () => {
+         if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
+             nextPage();
          }
     });
 
