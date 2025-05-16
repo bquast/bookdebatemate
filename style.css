@@ -34,8 +34,7 @@ body {
     flex-grow: 1;
     display: flex;
     justify-content: center;
-    /* Adjust padding after removing bottom nav (only top/bottom padding needed for vertical spacing) */
-    padding: 20px;
+    padding: 20px; /* Consistent padding */
     gap: 20px;
     overflow: hidden;
     box-sizing: border-box;
@@ -44,11 +43,12 @@ body {
 
 .page {
     background-color: var(--page-background);
-    padding: 20px;
-    overflow-y: auto;
+    padding: 20px; /* Consistent padding */
+    /* Set overflow to hidden to prevent scrolling */
+    overflow-y: hidden;
     box-sizing: border-box;
     max-width: 100%;
-    scrollbar-width: none;
+    scrollbar-width: none; /* Hide scrollbar (though overflow is hidden now) */
     -ms-overflow-style: none;
 }
 
@@ -58,34 +58,37 @@ body {
 
 
 /* Basic Markdown Styling */
+/* Ensure consistent margins for block elements */
+.page h1, .page h2, .page h3,
+.page p, .page hr, .page .section-number, .page em {
+    margin-top: 0;
+    margin-bottom: 1em; /* Consistent bottom margin for spacing between blocks */
+    padding: 0; /* Ensure no extra padding */
+}
+
+.page h1 { font-size: 2em; text-align: center; margin-bottom: 0.5em; } /* Keep slightly smaller margin after heading */
+.page h2 { font-size: 1.5em; text-align: center; margin-bottom: 0.5em; }
+.page h3 { font-size: 1.2em; text-align: center; margin-bottom: 0.5em; }
+
 .page .section-number {
     display: block;
     text-align: center;
     font-size: 1.1em;
-    margin: 1em 0;
     font-weight: bold;
+    margin-bottom: 1em; /* Ensure consistent spacing */
 }
-
-
-.page h1, .page h2, .page h3 {
-    text-align: center;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-}
-
-.page h1 { font-size: 2em; }
-.page h2 { font-size: 1.5em; }
-.page h3 { font-size: 1.2em; }
 
 .page hr {
     border: none;
     border-top: 1px solid var(--separator-color);
-    margin: 20px auto;
+    margin: 1em auto; /* Adjust margin for consistency */
     width: 50%;
 }
 
 .page em {
     font-style: italic;
+    /* If used as block element, apply margin-bottom */
+    display: block; /* Assume lines starting/ending with _ are blocks for now */
 }
 
 
@@ -93,9 +96,6 @@ body {
 #page-right {
     display: none;
 }
-
-/* Removed navigation bar styles */
-
 
 /* Loading Area Styles */
 #loading-area {
@@ -196,8 +196,8 @@ body.book-loaded #menu-toggle {
 
     .page {
         flex-basis: 48%;
-        /* Adjust max-height based on removed bottom nav */
-        max-height: calc(100vh - 40px);
+        /* Adjust max-height based on removed bottom nav and padding */
+        max-height: calc(100vh - 40px); /* 40px is total top/bottom padding on book-container */
         border: none;
         box-shadow: none;
     }
@@ -210,8 +210,8 @@ body.book-loaded #menu-toggle {
     #book-container::after {
         content: '';
         position: absolute;
-        top: 20px;
-        bottom: 20px;
+        top: 20px; /* Align with page padding */
+        bottom: 20px; /* Align with page padding */
         left: 50%;
         width: 1px;
         background-color: var(--separator-color);
@@ -276,7 +276,7 @@ body.book-loaded #menu-toggle {
 .menu-subsection h5 {
     margin-top: 0;
     margin-bottom: 5px;
-    font-size: 1em; /* Slightly smaller than section title */
+    font-size: 1em;
 }
 
 .menu-section label {
@@ -323,7 +323,7 @@ body.book-loaded #menu-toggle {
 /* Responsive adjustment for pages on smaller screens */
 @media (max-width: 767px) {
     .page {
-        /* Adjust max-height based on removed bottom nav */
-        max-height: calc(100vh - 40px);
+        /* Adjust max-height based on removed bottom nav and padding */
+        max-height: calc(100vh - 40px); /* 40px is total top/bottom padding on book-container */
     }
 }
