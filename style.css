@@ -55,15 +55,9 @@ body {
     display: none;
 }
 
-/* Remove the specific rule for the very first child, as we'll use general heading/section margins */
-/* .page > :first-child {
-    margin-top: 3em;
-} */
-
 
 /* Basic Markdown Styling */
 /* Ensure consistent margins for block elements */
-/* Increase margin-top for headings and section numbers */
 .page h1, .page h2, .page h3,
 .page .section-number {
     margin-top: 2.5em; /* Increased top margin for headings and section numbers */
@@ -115,7 +109,7 @@ body {
     border: 1px solid var(--page-border-color);
     background-color: var(--page-background);
     color: var(--text-color);
-    max-width: 500px;
+    max-width: 600px; /* Increased max-width to accommodate lists */
     margin-left: auto;
     margin-right: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -124,11 +118,68 @@ body {
 
 .load-option {
     margin-bottom: 20px;
+    border-bottom: 1px dashed var(--separator-color); /* Separator between options */
+    padding-bottom: 20px;
 }
+
+.load-option:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
 
 .load-option h3 {
     margin-top: 0;
 }
+
+#book-search {
+    padding: 8px;
+    width: calc(100% - 18px); /* Full width minus padding/border */
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--page-border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+#repository-books-list,
+#recent-books-list,
+#saved-books-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+    max-height: 200px; /* Increased height for lists */
+    overflow-y: auto;
+    border: 1px solid var(--page-border-color);
+    background-color: var(--background-color);
+    text-align: left; /* Align list items to the left */
+}
+
+#repository-books-list li,
+#recent-books-list li,
+#saved-books-list li {
+    padding: 8px;
+    border-bottom: 1px solid var(--page-border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    overflow: hidden; /* Hide overflowing text */
+    text-overflow: ellipsis; /* Add ellipsis for overflowing text */
+    white-space: nowrap; /* Prevent text from wrapping */
+}
+
+#repository-books-list li:last-child,
+#recent-books-list li:last-child,
+#saved-books-list li:last-child {
+    border-bottom: none;
+}
+
+#repository-books-list li:hover,
+#recent-books-list li:hover,
+#saved-books-list li:hover {
+    background-color: var(--separator-color); /* Use a slightly darker color for hover */
+}
+
 
 #url-input {
     padding: 8px;
@@ -156,31 +207,15 @@ body {
      transition: color 0.3s;
 }
 
-/* Style for saved books list */
-#saved-books-list {
-    list-style: none;
-    padding: 0;
-    margin: 10px 0;
-    max-height: 150px;
-    overflow-y: auto;
-    border: 1px solid var(--page-border-color);
-    background-color: var(--background-color);
-}
-
-#saved-books-list li {
-    padding: 8px;
-    border-bottom: 1px solid var(--page-border-color);
+#clear-recent-books,
+#clear-saved-books {
+    margin-top: 10px;
+    padding: 5px 10px;
     cursor: pointer;
-    text-align: left;
-    transition: background-color 0.2s;
-}
-
-#saved-books-list li:last-child {
-    border-bottom: none;
-}
-
-#saved-books-list li:hover {
     background-color: var(--navigation-bg);
+    color: var(--text-color);
+    border: 1px solid var(--page-border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 
@@ -206,7 +241,6 @@ body.book-loaded #menu-toggle {
 
     .page {
         flex-basis: 48%;
-        /* Adjust max-height based on removed bottom nav and padding */
         max-height: calc(100vh - 40px); /* 40px is total top/bottom padding on book-container */
         border: none;
         box-shadow: none;
@@ -265,9 +299,6 @@ body.book-loaded #menu-toggle {
 #side-menu.hidden {
     right: -280px;
 }
-
-/* Removed menu-header styles */
-
 
 .menu-section {
     margin-bottom: 20px;

@@ -10,23 +10,39 @@
 
     <div id="loading-area">
         <h2>Load a Markdown Book</h2>
+
         <div class="load-option">
-            <h3>From your computer:</h3>
+            <h3>Load from Repository:</h3>
+            <input type="text" id="book-search" placeholder="Search by title or author">
+            <ul id="repository-books-list">
+                </ul>
+        </div>
+
+        <div class="load-option">
+            <h3>Load from your computer:</h3>
             <input type="file" id="file-input" accept=".md">
         </div>
         <div class="load-option">
-            <h3>From a URL:</h3>
+            <h3>Load from a URL:</h3>
             <input type="text" id="url-input" placeholder="Enter markdown file URL">
             <button id="load-url">Load URL</button>
         </div>
         <p id="loading-status"></p>
 
         <div class="load-option">
-            <h3>Load Saved Books:</h3>
+            <h3>Recent Files:</h3>
+            <ul id="recent-books-list">
+                </ul>
+             <button id="clear-recent-books" style="display: none;">Clear Recent Files</button>
+        </div>
+
+         <div class="load-option" id="saved-books-section" style="display: none;">
+            <h3>Saved Books (Local Storage):</h3>
             <ul id="saved-books-list">
                 </ul>
              <button id="clear-saved-books" style="display: none;">Clear Saved Books</button>
         </div>
+
     </div>
 
     <div id="book-container" style="display: none;">
@@ -39,10 +55,12 @@
 
     <div id="side-menu" class="hidden">
         <div class="menu-section">
-            <h4>Settings</h4> <div class="menu-subsection"> <h5>Appearance</h5>
+            <h4>Settings</h4>
+            <div class="menu-subsection">
+                 <h5>Appearance</h5>
                  <label><input type="radio" name="theme" value="light"> Light</label><br>
                  <label><input type="radio" name="theme" value="dark"> Dark</label><br>
-                 <label><input type="radio" name="theme" value="system"> System</label>
+                 <label><input type="radio" name="system"> System</label>
             </div>
         </div>
         <div class="menu-section" id="progress-section" style="display: none;">

@@ -1,9 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loadingArea = document.getElementById('loading-area');
+    const bookSearchInput = document.getElementById('book-search');
+    const repositoryBooksList = document.getElementById('repository-books-list');
     const fileInput = document.getElementById('file-input');
     const urlInput = document.getElementById('url-input');
     const loadUrlButton = document.getElementById('load-url');
     const loadingStatus = document.getElementById('loading-status');
+    const recentBooksList = document.getElementById('recent-books-list');
+    const clearRecentBooksButton = document.getElementById('clear-recent-books');
+    const savedBooksSection = document.getElementById('saved-books-section');
     const savedBooksList = document.getElementById('saved-books-list');
     const clearSavedBooksButton = document.getElementById('clear-saved-books');
     const bookContainer = document.getElementById('book-container');
@@ -20,9 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let bookContent = []; // Array to hold content sections (paragraphs, headings, etc.)
     let pages = []; // Array to hold content structured into pages
     let currentPage = 0; // Current page index (0-based)
-    const localStorageKeyPrefix = 'bookmark_book_'; // Prefix for localStorage keys
+    let allRepositoryBooks = []; // Store the full list from the JSON
+    const localStorageBookPrefix = 'bookmark_book_'; // Prefix for explicitly saved books
+    const localStorageRecentPrefix = 'bookmark_recent_'; // Prefix for recent repository books
 
-    // --- Local Storage Management ---
+
+    // --- Local Storage Management (for explicitly saved books) ---
     function saveBookToLocalStorage(title, markdownText) {
         try {
             const bookData = {
@@ -30,9 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 markdown: markdownText,
                 lastPage: currentPage // Save current page
             };
-            localStorage.setItem(localStorageKeyPrefix + title, JSON.stringify(bookData));
+            // Use a specific prefix for explicitly saved books
+            localStorage.setItem(localStorageBookPrefix + title, JSON.stringify(bookData));
             console.log(`Book "${title}" saved to local storage.`);
-            listSavedBooks(); // Refresh the list after saving
+            listSavedBooks(); // Refresh the saved books list
         } catch (e) {
             console.error("Failed to save book to local storage:", e);
             // Handle potential storage full errors gracefully
@@ -42,11 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadBookFromLocalStorage(title) {
         try {
-            const item = localStorage.getItem(localStorageKeyPrefix + title);
+            const item = localStorage.getItem(localStorageBookPrefix + title);
             if (item) {
                 const bookData = JSON.parse(item);
                 console.log(`Book "${title}" loaded from local storage.`);
                 loadContent(bookData.markdown, bookData.lastPage); // Load content and last page
+                // Add to recent list if not already there
+                addRecentBook({ title: bookData.title, url: null }); // URL is null for locally saved
                 return true;
             }
         } catch (e) {
@@ -60,18 +71,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const books = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key.startsWith(localStorageKeyPrefix)) {
+            // Filter by the prefix for explicitly saved books
+            if (key.startsWith(localStorageBookPrefix)) {
                 try {
                     const item = localStorage.getItem(key);
                     const bookData = JSON.parse(item);
                     if (bookData && bookData.title && bookData.markdown) {
                         books.push({ key: key, title: bookData.title });
                     } else {
-                         console.warn(`Invalid book data in localStorage key: ${key}`);
+                         console.warn(`Invalid saved book data in localStorage key: ${key}`);
                          // Optionally remove invalid data: localStorage.removeItem(key);
                     }
                 } catch (e) {
-                     console.error(`Error parsing localStorage item for key: ${key}`, e);
+                     console.error(`Error parsing saved book localStorage item for key: ${key}`, e);
                       // Optionally remove corrupt data: localStorage.removeItem(key);
                 }
             }
@@ -83,30 +95,91 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.textContent = book.title;
                 li.dataset.key = book.key; // Store the key
                 li.addEventListener('click', () => {
-                    loadBookFromLocalStorage(book.title);
+                    // Extract original title from key by removing prefix
+                    const originalTitle = book.key.replace(localStorageBookPrefix, '');
+                    loadBookFromLocalStorage(originalTitle);
                 });
                 savedBooksList.appendChild(li);
             });
             clearSavedBooksButton.style.display = 'block';
+            savedBooksSection.style.display = 'block'; // Show the section if there are saved books
         } else {
-            savedBooksList.innerHTML = '<li>No saved books found.</li>';
+            savedBooksList.innerHTML = '<li>No locally saved books found.</li>';
             clearSavedBooksButton.style.display = 'none';
+             savedBooksSection.style.display = 'none'; // Hide the section if no saved books
         }
     }
 
     function clearSavedBooks() {
-        if (confirm('Are you sure you want to clear all saved books?')) {
+        if (confirm('Are you sure you want to clear all locally saved books?')) {
             for (let i = localStorage.length - 1; i >= 0; i--) {
                 const key = localStorage.key(i);
-                if (key.startsWith(localStorageKeyPrefix)) {
+                if (key.startsWith(localStorageBookPrefix)) {
                     localStorage.removeItem(key);
                 }
             }
             listSavedBooks(); // Refresh the list
             // If the currently loaded book was cleared, go back to loading screen
-            if (!currentlyLoadedBookTitle || !localStorage.getItem(localStorageKeyPrefix + currentlyLoadedBookTitle)) {
+            if (!currentlyLoadedBookTitle || !localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
                  showLoadingArea();
             }
+        }
+    }
+
+    // --- Recent Files Management (for repository books) ---
+    function addRecentBook(book) {
+        let recentBooks = getRecentBooks();
+        // Check if the book is already in the recent list (by URL for repo books, or title for local)
+        const isAlreadyRecent = recentBooks.some(recent =>
+            (book.url && recent.url === book.url) || (!book.url && recent.title === book.title)
+        );
+
+        if (!isAlreadyRecent) {
+            // Add the new book to the beginning of the list
+            recentBooks.unshift({ title: book.title, url: book.url });
+            // Keep the list at a reasonable size (e.g., the last 10-20 recent books)
+            recentBooks = recentBooks.slice(0, 20);
+            localStorage.setItem('recentBooks', JSON.stringify(recentBooks));
+            listRecentBooks(); // Refresh the recent books list
+        }
+    }
+
+    function getRecentBooks() {
+        const recentBooksString = localStorage.getItem('recentBooks');
+        return recentBooksString ? JSON.parse(recentBooksString) : [];
+    }
+
+    function listRecentBooks() {
+        recentBooksList.innerHTML = ''; // Clear current list
+        const recentBooks = getRecentBooks();
+
+        if (recentBooks.length > 0) {
+            recentBooks.forEach(book => {
+                const li = document.createElement('li');
+                li.textContent = book.title;
+                li.dataset.url = book.url; // Store the URL (or null for local)
+                li.dataset.title = book.title; // Store the title
+                li.addEventListener('click', () => {
+                    if (book.url) {
+                         loadBookFromURL(book.url, book.title); // Load from URL for repo books
+                    } else {
+                         loadBookFromLocalStorage(book.title); // Load from local storage for saved files
+                    }
+
+                });
+                recentBooksList.appendChild(li);
+            });
+            clearRecentBooksButton.style.display = 'block';
+        } else {
+            recentBooksList.innerHTML = '<li>No recent files.</li>';
+            clearRecentBooksButton.style.display = 'none';
+        }
+    }
+
+    function clearRecentBooks() {
+        if (confirm('Are you sure you want to clear your recent files list?')) {
+            localStorage.removeItem('recentBooks');
+            listRecentBooks();
         }
     }
 
@@ -209,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // After getting blocks, process paragraphs for potential inline italics (optional, but good practice)
         // This specific book format doesn't seem to use inline italics much,
-        // but this would be the place to add a regex replace for _word_ or _multiple words_ within <p> tags.
+        // but this would be the place to add a replace for _word_ or _multiple words_ within <p> tags.
         // For now, the block italic logic should handle the "Translated By Thomas Common" case.
 
         console.log("Parsed Content:", parsedContent); // Log parsed content for debugging
@@ -251,27 +324,33 @@ document.addEventListener('DOMContentLoaded', () => {
             tempDiv.style.padding = '0';
             tempDiv.style.margin = '0';
 
+            // Apply specific CSS margins for height calculation
+            if (elementHTML.startsWith('<h1')) {
+                 tempDiv.style.marginTop = '2.5em';
+                 tempDiv.style.marginBottom = '0.5em';
+            } else if (elementHTML.startsWith('<h2') || elementHTML.startsWith('<h3')) {
+                tempDiv.style.marginTop = '2.5em';
+                tempDiv.style.marginBottom = '0.5em';
+            } else if (elementHTML.startsWith('<span class="section-number">')) {
+                 tempDiv.style.marginTop = '2.5em';
+                 tempDiv.style.marginBottom = '1em';
+            } else if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<em>')) {
+                 tempDiv.style.marginTop = '0';
+                 tempDiv.style.marginBottom = '1em';
+            } else if (elementHTML === '<hr>') {
+                 tempDiv.style.marginTop = '1em';
+                 tempDiv.style.marginBottom = '1em';
+            }
+
 
             tempDiv.innerHTML = elementHTML;
             document.body.appendChild(tempDiv);
             const height = tempDiv.getBoundingClientRect().height; // Use getBoundingClientRect for more accurate height
             document.body.removeChild(tempDiv);
 
-             // Add estimated margin-bottom based on CSS (use getComputedStyle from a relevant element if possible)
-             // Using a simplified estimation based on 'em' values
-             let estimatedMarginBottom = 0;
-             const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize); // Get root font size
-
-             if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<span class="section-number">') || elementHTML.startsWith('<em>')) {
-                  estimatedMarginBottom = baseFontSize * 1; // 1em margin-bottom for paragraphs/section numbers/italic blocks
-             } else if (elementHTML.startsWith('<h')) {
-                 estimatedMarginBottom = baseFontSize * 0.5; // 0.5em margin-bottom for headings
-             } else if (elementHTML === '<hr>') {
-                 estimatedMarginBottom = 20; // 20px margin for hr
-             }
              // Add a small buffer per block to account for rounding or minor inconsistencies
              const blockBuffer = 1; // Adjust as needed
-            return height + estimatedMarginBottom + blockBuffer;
+            return height + blockBuffer;
         }
 
         for (const block of content) {
@@ -354,14 +433,14 @@ document.addEventListener('DOMContentLoaded', () => {
         pageLeft.scrollTop = 0;
         pageRight.scrollTop = 0;
 
-        // Save current page to local storage if a book is loaded
-        if (bookContent.length > 0 && currentlyLoadedBookTitle) {
+        // Save current page to local storage if a book is loaded (only for explicitly saved books)
+        if (bookContent.length > 0 && currentlyLoadedBookTitle && localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
             try {
-                 const item = localStorage.getItem(localStorageKeyPrefix + currentlyLoadedBookTitle);
+                 const item = localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle);
                  if (item) {
                      const bookData = JSON.parse(item);
                      bookData.lastPage = currentPage;
-                     localStorage.setItem(localStorageKeyPrefix + currentlyLoadedBookTitle, JSON.stringify(bookData));
+                     localStorage.setItem(localStorageBookPrefix + currentlyLoadedBookTitle, JSON.stringify(bookData));
                  }
             } catch (e) {
                 console.error("Failed to save current page to local storage:", e);
@@ -440,11 +519,34 @@ document.addEventListener('DOMContentLoaded', () => {
         sideMenu.classList.add('hidden'); // Ensure menu is closed
         overlay.classList.add('hidden'); // Ensure overlay is hidden
         document.body.classList.remove('book-loaded');
-        currentlyLoadedBookTitle = null;
-        listSavedBooks(); // Refresh the list in case something was cleared
+        currentlyLoadedBookTitle = null; // Reset loaded book
+        listSavedBooks(); // Refresh the saved books list
+        listRecentBooks(); // Refresh the recent books list
     }
 
-    function loadContent(markdownText, initialPage = 0) {
+    // Load markdown content from a URL
+    async function loadBookFromURL(url, title, initialPage = 0) {
+         loadingStatus.textContent = `Loading from URL: ${url}...`;
+         try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const markdownText = await response.text();
+            loadContent(markdownText, initialPage, title); // Pass title to loadContent
+             // Add to recent list after successful loading
+            addRecentBook({ title: title, url: url });
+
+         } catch (error) {
+             console.error("Error fetching markdown from URL:", error);
+             loadingStatus.textContent = `Error loading URL: ${error.message}`;
+             showLoadingArea(); // Go back to loading area on failure
+         }
+    }
+
+
+    // Load markdown content (internal processing)
+    function loadContent(markdownText, initialPage = 0, title = 'Untitled Book') {
         loadingStatus.textContent = 'Parsing content...';
         bookContent = parseMarkdown(markdownText);
 
@@ -464,9 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
             menuToggle.style.display = 'block'; // Show menu toggle
             document.body.classList.add('book-loaded'); // Add class to body
             loadingStatus.textContent = ''; // Clear status
-             // Identify book title for saving progress
-             const titleMatch = markdownText.match(/^#\s*(.+)/m);
-             currentlyLoadedBookTitle = titleMatch ? titleMatch[1].trim() : 'Untitled Book';
+             // Set currently loaded book title (used for saving progress later)
+             currentlyLoadedBookTitle = title;
 
         } else {
             loadingStatus.textContent = 'Could not process book content or book is empty.';
@@ -485,9 +586,14 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingStatus.textContent = `Loading file: ${file.name}...`;
             const reader = new FileReader();
             reader.onload = (e) => {
-                 // Save to local storage after loading from file
-                saveBookToLocalStorage(file.name.replace(/\.md$/, ''), e.target.result);
-                loadContent(e.target.result);
+                 // Use filename as title for local files
+                const title = file.name.replace(/\.md$/, '');
+                 // Optionally, ask user if they want to save to local storage permanently
+                 // If yes, call saveBookToLocalStorage(title, e.target.result);
+                 // Otherwise, just load it
+                loadContent(e.target.result, 0, title); // Load content directly
+                 addRecentBook({ title: title, url: null }); // Add to recent list
+
             };
             reader.onerror = (e) => {
                 loadingStatus.textContent = `Error loading file: ${e.target.error}`;
@@ -499,31 +605,66 @@ document.addEventListener('DOMContentLoaded', () => {
     loadUrlButton.addEventListener('click', async () => {
         const url = urlInput.value.trim();
         if (url) {
-            loadingStatus.textContent = `Loading from URL: ${url}...`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const markdownText = await response.text();
-                 // Attempt to extract a title from the URL or content
-                 const urlParts = url.split('/');
-                 const defaultTitle = urlParts[urlParts.length - 1].replace(/\.md$/, '') || 'Untitled URL Book';
-                 const contentTitleMatch = markdownText.match(/^#\s*(.+)/m);
-                 const bookTitle = contentTitleMatch ? contentTitleMatch[1].trim() : defaultTitle;
+             // Attempt to extract a title from the URL or content after fetching
+             // For now, use URL filename as a placeholder title before fetching
+            const urlParts = url.split('/');
+            const placeholderTitle = urlParts[urlParts.length - 1].replace(/\.md$/, '') || 'Untitled URL Book';
+            loadBookFromURL(url, placeholderTitle); // Load from the URL
 
-                 // Save to local storage after loading from URL
-                saveBookToLocalStorage(bookTitle, markdownText);
-                loadContent(markdownText);
-
-            } catch (error) {
-                console.error("Error fetching markdown from URL:", error);
-                loadingStatus.textContent = `Error loading URL: ${error.message}`;
-            }
         } else {
             loadingStatus.textContent = 'Please enter a URL.';
         }
     });
+
+    // --- Repository Book List and Search ---
+    async function fetchRepositoryBooks() {
+        try {
+            // Assuming books_index.json is at the root of the deployed site
+            const response = await fetch('books_index.json');
+            if (!response.ok) {
+                 // If the index is not found, hide the repository section
+                 document.querySelector('.load-option h3').textContent = 'Repository books not available.';
+                 bookSearchInput.style.display = 'none';
+                 repositoryBooksList.style.display = 'none';
+                 return;
+            }
+            allRepositoryBooks = await response.json();
+            renderRepositoryBooks(allRepositoryBooks); // Render initial list
+        } catch (error) {
+            console.error("Error fetching repository book index:", error);
+             document.querySelector('.load-option h3').textContent = 'Error loading repository books.';
+             bookSearchInput.style.display = 'none';
+             repositoryBooksList.style.display = 'none';
+        }
+    }
+
+    function renderRepositoryBooks(booksToRender) {
+        repositoryBooksList.innerHTML = ''; // Clear current list
+        if (booksToRender.length > 0) {
+            booksToRender.forEach(book => {
+                const li = document.createElement('li');
+                li.textContent = `${book.title} by ${book.author} (${book.year})`;
+                li.dataset.url = book.url; // Store the URL
+                li.dataset.title = book.title; // Store the title
+                li.addEventListener('click', () => {
+                    loadBookFromURL(book.url, book.title); // Load the book from its URL
+                });
+                repositoryBooksList.appendChild(li);
+            });
+        } else {
+            repositoryBooksList.innerHTML = '<li>No books found matching your search.</li>';
+        }
+    }
+
+    function filterRepositoryBooks() {
+        const searchTerm = bookSearchInput.value.toLowerCase();
+        const filteredBooks = allRepositoryBooks.filter(book => {
+            return book.title.toLowerCase().includes(searchTerm) ||
+                   book.author.toLowerCase().includes(searchTerm);
+        });
+        renderRepositoryBooks(filteredBooks);
+    }
+
 
     // --- Menu Toggling ---
     function openMenu() {
@@ -578,12 +719,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         applySavedTheme(); // Apply saved theme preference
         listSavedBooks(); // List saved books on the loading page
+        listRecentBooks(); // List recent files on the loading page
+        fetchRepositoryBooks(); // Fetch and display repository books
 
         // Initial state (show loading area)
          showLoadingArea();
 
-         // Add event listener for clearing saved books
+         // Add event listeners
          clearSavedBooksButton.addEventListener('click', clearSavedBooks);
+         clearRecentBooksButton.addEventListener('click', clearRecentBooks);
+         bookSearchInput.addEventListener('input', filterRepositoryBooks); // Live filtering
+
 
     }
 
