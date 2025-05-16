@@ -44,11 +44,10 @@ body {
 .page {
     background-color: var(--page-background);
     padding: 20px; /* Consistent padding */
-    /* Set overflow to hidden to prevent scrolling */
-    overflow-y: hidden;
+    overflow-y: hidden; /* Prevent scrolling */
     box-sizing: border-box;
     max-width: 100%;
-    scrollbar-width: none; /* Hide scrollbar (though overflow is hidden now) */
+    scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
@@ -56,26 +55,38 @@ body {
     display: none;
 }
 
+/* Remove the specific rule for the very first child, as we'll use general heading/section margins */
+/* .page > :first-child {
+    margin-top: 3em;
+} */
+
 
 /* Basic Markdown Styling */
 /* Ensure consistent margins for block elements */
+/* Increase margin-top for headings and section numbers */
 .page h1, .page h2, .page h3,
-.page p, .page hr, .page .section-number, .page em {
-    margin-top: 0;
-    margin-bottom: 1em; /* Consistent bottom margin for spacing between blocks */
-    padding: 0; /* Ensure no extra padding */
+.page .section-number {
+    margin-top: 2.5em; /* Increased top margin for headings and section numbers */
+    margin-bottom: 0.5em; /* Keep consistent smaller bottom margin after headings */
+    padding: 0;
 }
 
-.page h1 { font-size: 2em; text-align: center; margin-bottom: 0.5em; } /* Keep slightly smaller margin after heading */
-.page h2 { font-size: 1.5em; text-align: center; margin-bottom: 0.5em; }
-.page h3 { font-size: 1.2em; text-align: center; margin-bottom: 0.5em; }
+.page p, .page hr, .page em {
+     margin-top: 0; /* Paragraphs, hr, and em blocks start with no top margin */
+     margin-bottom: 1em; /* Consistent bottom margin after these blocks */
+     padding: 0;
+}
+
+
+.page h1 { font-size: 2em; text-align: center; }
+.page h2 { font-size: 1.5em; text-align: center; }
+.page h3 { font-size: 1.2em; text-align: center; }
 
 .page .section-number {
     display: block;
     text-align: center;
     font-size: 1.1em;
     font-weight: bold;
-    margin-bottom: 1em; /* Ensure consistent spacing */
 }
 
 .page hr {
@@ -87,7 +98,6 @@ body {
 
 .page em {
     font-style: italic;
-    /* If used as block element, apply margin-bottom */
     display: block; /* Assume lines starting/ending with _ are blocks for now */
 }
 
@@ -257,10 +267,6 @@ body.book-loaded #menu-toggle {
 }
 
 /* Removed menu-header styles */
-/* #menu-header { ... } */
-/* #menu-header h3 { ... } */
-/* Removed close-menu styles */
-/* #close-menu { ... } */
 
 
 .menu-section {
