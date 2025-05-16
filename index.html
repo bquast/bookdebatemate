@@ -1,3 +1,12 @@
+<label><input type="radio" name="theme" value="light"> Light</label><br>
+<label><input type="radio" name="theme" value="dark"> Dark</label><br>
+<label><input type="radio" name="theme"> System</label> ```
+
+When `applySavedTheme` tries to find `input[name="theme"][value="system"]`, it cannot find the "System" radio button because it doesn't have the `value="system"` attribute. This causes `document.querySelector` to return `null`, and attempting to set `.checked` on `null` throws the error.
+
+**To fix this, update your `index.html` file and add the `value="system"` attribute to the "System" theme radio button:**
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,11 +28,11 @@
         </div>
 
         <div class="load-option">
-            <h3>Load from your computer:</h3>
+            <h3>From your computer:</h3>
             <input type="file" id="file-input" accept=".md">
         </div>
         <div class="load-option">
-            <h3>Load from a URL:</h3>
+            <h3>From a URL:</h3>
             <input type="text" id="url-input" placeholder="Enter markdown file URL">
             <button id="load-url">Load URL</button>
         </div>
@@ -60,8 +69,7 @@
                  <h5>Appearance</h5>
                  <label><input type="radio" name="theme" value="light"> Light</label><br>
                  <label><input type="radio" name="theme" value="dark"> Dark</label><br>
-                 <label><input type="radio" name="system"> System</label>
-            </div>
+                 <label><input type="radio" name="theme" value="system"> System</label> </div>
         </div>
         <div class="menu-section" id="progress-section" style="display: none;">
             <h4>Progress</h4>
