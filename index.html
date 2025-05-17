@@ -42,15 +42,26 @@
                 </ul>
              <button id="clear-saved-books" style="display: none;">Clear Saved Books</button>
         </div>
+    </div>
 
+    <div id="book-container" style="display: none;">
+        <div id="page-left" class="page"></div>
+        <div id="page-right" class="page"></div>
     </div>
 
     <div id="side-menu">
-        <div id="menu-toggle">
-            &#x2261; <span class="tooltiptext">Toggle Menu</span>
+        <div id="menu-toggle-container">
+            <div id="menu-toggle">
+                &#x2261; <span class="tooltiptext">Toggle Menu</span>
+            </div>
         </div>
-        <div id="collapsed-progress" class="menu-section" style="display: none;">
-            <span id="vertical-page-info"></span>
+        <div id="collapsed-sidebar-content">
+            <div id="collapsed-book-title" class="menu-section" style="display: none;">
+                <span id="vertical-book-title-text"></span>
+            </div>
+            <div id="collapsed-progress" class="menu-section" style="display: none;">
+                <span id="simple-page-info"></span>
+            </div>
         </div>
         <div id="expanded-menu-content" class="hidden">
             <div class="menu-section">
@@ -71,15 +82,7 @@
                 <span id="menu-page-info"></span>
             </div>
         </div>
-         <div style="height: 50px;"></div>
     </div>
-
-    <div id="book-container" style="display: none;">
-        <div id="page-left" class="page"></div>
-        <div id="page-right" class="page"></div>
-    </div>
-
-    <div id="overlay" class="hidden"></div>
 
     <script src="script.js"></script>
 </body>

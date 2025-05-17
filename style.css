@@ -5,7 +5,7 @@
     --page-background: #fff;
     --page-border-color: #ddd;
     --separator-color: #ccc;
-    --sidebar-background: #ececec; /* Slightly different for sidebar */
+    --sidebar-background: #ececec;
     --sidebar-width-collapsed: 60px;
     --sidebar-width-expanded: 280px;
 }
@@ -24,7 +24,7 @@ body {
     margin: 0;
     font-family: serif;
     line-height: 1.6;
-    display: flex; /* Changed for sidebar layout */
+    display: flex;
     min-height: 100vh;
     background-color: var(--background-color);
     color: var(--text-color);
@@ -33,29 +33,42 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
-/* Side Menu Styles - MODIFIED FOR PERSISTENT SIDEBAR */
+/* Side Menu Styles - MODIFIED FOR RIGHT SIDEBAR */
 #side-menu {
-    position: fixed; /* Keeps it fixed on the side */
+    position: fixed;
     top: 0;
-    left: 0; /* Position on the left */
+    right: 0; /* Position on the right */
     height: 100%;
     width: var(--sidebar-width-collapsed);
     background-color: var(--sidebar-background);
     color: var(--text-color);
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Shadow on the right */
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Shadow on the left */
     z-index: 1000;
-    padding: 10px;
     box-sizing: border-box;
     transition: width 0.3s ease-in-out, background-color 0.3s, color 0.3s;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center hamburger icon */
-    overflow-x: hidden; /* Hide content when collapsed */
+    align-items: center;
+    overflow-x: hidden;
+    padding-top: 0; /* Adjust as #menu-toggle-container will handle top spacing */
 }
 
 #side-menu.expanded {
     width: var(--sidebar-width-expanded);
-    align-items: flex-start; /* Align content to start when expanded */
+    align-items: flex-start;
+}
+
+#menu-toggle-container {
+    width: 100%;
+    display: flex;
+    justify-content: center; /* Center hamburger icon if sidebar is narrow */
+    padding: 10px 0; /* Padding for the hamburger */
+    box-sizing: border-box;
+}
+
+#side-menu.expanded #menu-toggle-container {
+    justify-content: flex-end; /* Align hamburger to the right when expanded */
+    padding-right: 15px; /* Give some space from the edge */
 }
 
 #menu-toggle {
@@ -64,11 +77,9 @@ body {
     color: var(--text-color);
     transition: color 0.3s;
     line-height: 1;
-    padding: 10px 0; /* Some padding for the icon */
-    width: 100%;
-    text-align: center;
-    position: relative; /* For tooltip */
+    position: relative;
 }
+
 .tooltiptext {
   visibility: hidden;
   width: 120px;
@@ -79,9 +90,9 @@ body {
   padding: 5px 0;
   position: absolute;
   z-index: 1;
-  bottom: 125%; /* Position the tooltip above the item */
+  bottom: 125%;
   left: 50%;
-  margin-left: -60px; /* Use half of the width (120/2 = 60), to center the tooltip */
+  margin-left: -60px;
   opacity: 0;
   transition: opacity 0.3s;
   font-size: 0.5em;
@@ -92,24 +103,48 @@ body {
   opacity: 1;
 }
 
+#collapsed-sidebar-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-top: 20px; /* Space below hamburger */
+}
+
+#side-menu.expanded #collapsed-sidebar-content {
+    display: none; /* Hide when menu is expanded */
+}
+
+#collapsed-book-title {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg); /* Correct orientation for vertical-rl */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: calc(100vh - 200px); /* Adjust based on other elements */
+    font-size: 0.9em;
+    margin-bottom: 20px; /* Space between title and progress */
+    cursor: default;
+}
 
 #collapsed-progress {
-    writing-mode: vertical-rl; /* For vertical text */
-    text-orientation: mixed;
     font-size: 0.9em;
-    margin-top: 20px;
-    white-space: pre; /* Preserve newlines for vertical display */
     text-align: center;
-    display: none; /* Hidden by default, shown when book loaded */
+    white-space: pre-wrap; /* Allows line breaks with \n */
+    line-height: 1.2;
 }
 
-#side-menu.expanded #collapsed-progress {
-    display: none; /* Hide vertical progress when expanded */
+#simple-page-info {
+    display: block;
 }
+
 
 #expanded-menu-content {
     width: 100%;
-    padding-top: 20px;
+    padding-top: 10px; /* Reduced top padding as hamburger is separate */
+    overflow-y: auto; /* Allow scrolling if content exceeds height */
+    flex-grow: 1; /* Allow it to take available space */
 }
 
 #expanded-menu-content.hidden {
@@ -122,8 +157,8 @@ body {
 
 .menu-section {
     margin-bottom: 20px;
-    padding-left: 10px; /* Indent content when expanded */
-    padding-right: 10px;
+    padding-left: 15px; /* Indent content when expanded */
+    padding-right: 15px;
 }
 
 .menu-section h4 {
@@ -154,16 +189,16 @@ body {
     justify-content: center;
     padding: 20px;
     gap: 20px;
-    overflow: hidden; /* Ensures content doesn't push layout */
+    overflow: hidden;
     box-sizing: border-box;
     position: relative;
-    /* Adjust margin to account for the new persistent sidebar */
-    margin-left: var(--sidebar-width-collapsed);
-    transition: margin-left 0.3s ease-in-out;
+    /* Adjust margin to account for the new RIGHT persistent sidebar */
+    margin-right: var(--sidebar-width-collapsed);
+    transition: margin-right 0.3s ease-in-out;
 }
 
 body.menu-expanded #book-container {
-    margin-left: var(--sidebar-width-expanded);
+    margin-right: var(--sidebar-width-expanded);
 }
 
 
@@ -181,13 +216,10 @@ body.menu-expanded #book-container {
     display: none;
 }
 
-/* Text Justification */
 .text-justify .page p {
     text-align: justify;
 }
 
-
-/* Basic Markdown Styling */
 .page h1, .page h2, .page h3,
 .page .section-number {
     margin-top: 2.5em;
@@ -200,7 +232,6 @@ body.menu-expanded #book-container {
      margin-bottom: 1em;
      padding: 0;
 }
-
 
 .page h1 { font-size: 2em; text-align: center; }
 .page h2 { font-size: 1.5em; text-align: center; }
@@ -225,12 +256,10 @@ body.menu-expanded #book-container {
     display: block;
 }
 
-
 #page-right {
     display: none;
 }
 
-/* Loading Area Styles - Center on page */
 #loading-area {
     text-align: center;
     padding: 20px;
@@ -238,223 +267,152 @@ body.menu-expanded #book-container {
     background-color: var(--page-background);
     color: var(--text-color);
     max-width: 600px;
-    /* Centering the loading area when sidebar is present */
-    margin: 50px auto; /* Keeps it centered if no sidebar or if sidebar is overlay */
+    margin: 50px auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-    position: relative; /* Ensure it's not affected by flex */
-    z-index: 1; /* Keep it above potential pseudo-elements from book-container */
+    position: relative;
+    z-index: 1;
 }
-
-/* When a book is loaded, the loading area is hidden by JS.
-   The book-container will then correctly use margin-left. */
-
 
 .load-option {
     margin-bottom: 20px;
     border-bottom: 1px dashed var(--separator-color);
     padding-bottom: 20px;
 }
-
-.load-option:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-
-.load-option h3 {
-    margin-top: 0;
-}
+.load-option:last-child { border-bottom: none; padding-bottom: 0; }
+.load-option h3 { margin-top: 0; }
 
 #book-search, #url-input {
-    padding: 8px;
-    box-sizing: border-box;
-    background-color: var(--background-color); /* Changed from --input-bg */
+    padding: 8px; box-sizing: border-box;
+    background-color: var(--background-color);
     color: var(--text-color);
     border: 1px solid var(--page-border-color);
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
-#book-search {
-    width: calc(100% - 18px);
-    margin-bottom: 10px;
-}
-#url-input {
-    margin-right: 5px;
-    width: calc(60% - 18px);
-}
+#book-search { width: calc(100% - 18px); margin-bottom: 10px; }
+#url-input { margin-right: 5px; width: calc(60% - 18px); }
 
-
-#repository-books-list,
-#recent-books-list,
-#saved-books-list {
-    list-style: none;
-    padding: 0;
-    margin: 10px 0;
-    max-height: 200px;
-    overflow-y: auto;
+#repository-books-list, #recent-books-list, #saved-books-list {
+    list-style: none; padding: 0; margin: 10px 0;
+    max-height: 200px; overflow-y: auto;
     border: 1px solid var(--page-border-color);
-    background-color: var(--background-color); /* Changed from --input-bg */
+    background-color: var(--background-color);
     text-align: left;
 }
 
-#repository-books-list li,
-#recent-books-list li,
-#saved-books-list li {
-    padding: 8px;
-    border-bottom: 1px solid var(--page-border-color);
-    cursor: pointer;
-    transition: background-color 0.2s;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+#repository-books-list li, #recent-books-list li, #saved-books-list li {
+    padding: 8px; border-bottom: 1px solid var(--page-border-color);
+    cursor: pointer; transition: background-color 0.2s;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-
-#repository-books-list li:last-child,
-#recent-books-list li:last-child,
-#saved-books-list li:last-child {
+#repository-books-list li:last-child, #recent-books-list li:last-child, #saved-books-list li:last-child {
     border-bottom: none;
 }
-
-#repository-books-list li:hover,
-#recent-books-list li:hover,
-#saved-books-list li:hover {
+#repository-books-list li:hover, #recent-books-list li:hover, #saved-books-list li:hover {
     background-color: var(--separator-color);
 }
 
-
 #load-url, #clear-recent-books, #clear-saved-books {
-    padding: 8px 15px;
-    cursor: pointer;
-    background-color: var(--sidebar-background); /* Match sidebar for consistency */
+    padding: 8px 15px; cursor: pointer;
+    background-color: var(--sidebar-background);
     color: var(--text-color);
     border: 1px solid var(--page-border-color);
-     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
-#clear-recent-books, #clear-saved-books {
-    margin-top: 10px;
-    padding: 5px 10px;
+#clear-recent-books, #clear-saved-books { margin-top: 10px; padding: 5px 10px; }
+#loading-status { color: var(--text-color); font-style: italic; transition: color 0.3s; }
+
+body.book-loaded #loading-area { display: none; }
+body.book-loaded #book-container { display: flex !important; }
+body.book-loaded #side-menu { display: flex !important; }
+
+body.book-loaded #collapsed-sidebar-content {
+    display: flex; /* Ensure it's flex to arrange children */
 }
-
-
-#loading-status {
-    color: var(--text-color);
-    font-style: italic;
-     transition: color 0.3s;
+body.book-loaded #collapsed-book-title {
+    display: block; /* Show book title */
 }
-
-
-body.book-loaded #loading-area {
-    display: none;
-}
-
-body.book-loaded #book-container {
-    display: flex !important;
-}
-
-/* Hamburger icon itself is always visible when a book is loaded */
-body.book-loaded #side-menu {
-    display: flex !important; /* Ensure sidebar is flex for centering collapsed items */
-}
-/* Collapsed progress display in the narrow bar */
 body.book-loaded #collapsed-progress {
-    display: block;
+    display: block; /* Show simple progress */
 }
 
 
 /* Desktop view: Two pages side-by-side */
 @media (min-width: 768px) {
-    #book-container {
-        flex-direction: row;
-    }
-
+    #book-container { flex-direction: row; }
     .page {
-        flex-basis: 48%; /* Adjust if necessary with new sidebar */
+        flex-basis: 48%;
         max-height: calc(100vh - 40px);
-        border: none;
-        box-shadow: none;
+        border: none; box-shadow: none;
     }
-
-    #page-right {
-        display: block;
-    }
-
+    #page-right { display: block; }
     #book-container::after {
-        content: '';
-        position: absolute;
-        top: 20px;
-        bottom: 20px;
-        left: 50%;
-        width: 1px;
-        background-color: var(--separator-color);
+        content: ''; position: absolute;
+        top: 20px; bottom: 20px; left: 50%;
+        width: 1px; background-color: var(--separator-color);
         transform: translateX(-50%);
         transition: background-color 0.3s;
     }
 }
 
-/* Overlay styles - No longer tied to menu being hidden/shown by JS class directly */
-#overlay {
+/* Overlay - Not obscuring pages on desktop when menu is expanded */
+/* On mobile, it will be used if the menu overlays the content */
+#overlay-mobile {
     position: fixed;
     top: 0;
-    left: 0; /* Should cover from left of sidebar */
+    left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999; /* Below sidebar but above content */
     opacity: 0;
-    visibility: hidden; /* Use visibility for transition */
+    visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-}
-
-#side-menu.expanded + #book-container + #overlay {
-    opacity: 1;
-    visibility: visible;
-    left: var(--sidebar-width-expanded); /* Start overlay after expanded menu */
-    width: calc(100% - var(--sidebar-width-expanded));
+    display: none; /* Default hidden, only enabled for mobile */
 }
 
 
-/* System Theme - Dark mode preference */
 @media (prefers-color-scheme: dark) {
-    body.system-theme:not(.light-theme) { /* Ensure explicit themes override system */
-        --background-color: #222;
-        --text-color: #eee;
-        --page-background: #333;
-        --page-border-color: #555;
-        --separator-color: #666;
-        --sidebar-background: #2a2a2a;
+    body.system-theme:not(.light-theme) {
+        --background-color: #222; --text-color: #eee;
+        --page-background: #333; --page-border-color: #555;
+        --separator-color: #666; --sidebar-background: #2a2a2a;
     }
 }
 
-/* Responsive adjustment for pages on smaller screens */
 @media (max-width: 767px) {
-    .page {
-        max-height: calc(100vh - 40px);
-    }
-    #side-menu { /* On mobile, sidebar still overlays */
-        left: calc(-1 * var(--sidebar-width-expanded)); /* Start off-screen */
-        width: var(--sidebar-width-expanded); /* Full width when shown */
-        transition: left 0.3s ease-in-out; /* Transition left property */
+    .page { max-height: calc(100vh - 40px); }
+    #side-menu { /* On mobile, sidebar still overlays from the right */
+        right: calc(-1 * var(--sidebar-width-expanded)); /* Start off-screen */
+        width: var(--sidebar-width-expanded);
+        transition: right 0.3s ease-in-out;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.2); /* Shadow for mobile overlay */
     }
     #side-menu.expanded {
-        left: 0; /* Slide in */
+        right: 0; /* Slide in */
     }
-    #collapsed-progress {
-        display: none !important; /* No narrow bar on mobile */
-    }
-    #book-container {
-        margin-left: 0 !important; /* No margin for sidebar on mobile */
-    }
+    #collapsed-sidebar-content { display: none !important; } /* No narrow bar on mobile */
+    #book-container { margin-right: 0 !important; }
 
-    /* Mobile menu toggle is simpler */
-    #menu-toggle {
+    #menu-toggle-container { /* Position hamburger icon top-right on mobile */
         position: fixed;
-        top: 15px;
-        left: 15px; /* Place top-left on mobile */
+        top: 0px;   /* Adjusted to be truly at the corner */
+        right: 0px; /* Adjusted to be truly at the corner */
+        width: auto; /* Don't take full width */
+        padding: 15px; /* Clickable area */
         z-index: 1001; /* Above sidebar */
+        background-color: var(--sidebar-background); /* Give it a small background */
+        border-bottom-left-radius: 5px; /* Optional styling */
+    }
+     #side-menu.expanded #menu-toggle-container {
+        /* Hamburger stays in its fixed spot even when menu is open */
+        justify-content: center;
+        padding-right: 0;
     }
 
-    #side-menu.expanded + #book-container + #overlay {
-        left: 0; /* Full overlay when menu is open on mobile */
-        width: 100%;
+    #overlay-mobile.active { /* Overlay for mobile menu */
+        display: block;
+        opacity: 1;
+        visibility: visible;
     }
 }
