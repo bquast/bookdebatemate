@@ -11,23 +11,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedBooksSection = document.getElementById('saved-books-section');
     const savedBooksList = document.getElementById('saved-books-list');
     const clearSavedBooksButton = document.getElementById('clear-saved-books');
+
     const bookContainer = document.getElementById('book-container');
     const pageLeft = document.getElementById('page-left');
     const pageRight = document.getElementById('page-right');
-    const menuToggle = document.getElementById('menu-toggle');
+
     const sideMenu = document.getElementById('side-menu');
+    const menuToggle = document.getElementById('menu-toggle');
+    const expandedMenuContent = document.getElementById('expanded-menu-content');
+    const collapsedProgress = document.getElementById('collapsed-progress');
+    const verticalPageInfo = document.getElementById('vertical-page-info');
+
     const themeRadios = document.querySelectorAll('input[name="theme"]');
-    const overlay = document.getElementById('overlay');
-    const menuPageInfo = document.getElementById('menu-page-info');
-    const progressSection = document.getElementById('progress-section');
+    const justifyTextCheckbox = document.getElementById('justify-text');
+    const overlay = document.getElementById('overlay'); // Re-get overlay if needed, or ensure it's correctly handled
+
+    const menuPageInfo = document.getElementById('menu-page-info'); // For expanded menu
+    const progressSectionExpanded = document.getElementById('progress-section-expanded');
 
 
-    let bookContent = []; // Array to hold content sections (paragraphs, headings, etc.)
-    let pages = []; // Array to hold content structured into pages
-    let currentPage = 0; // Current page index (0-based)
-    let allRepositoryBooks = []; // Store the full list from the JSON
-    const localStorageBookPrefix = 'bookmark_book_'; // Prefix for explicitly saved books
-    const localStorageRecentPrefix = 'bookmark_recent_'; // Prefix for recent repository books
+    let bookContent = [];
+    let pages = [];
+    let currentPage = 0;
+    let allRepositoryBooks = [];
+    const localStorageBookPrefix = 'bookmark_book_';
+    const localStorageRecentPrefix = 'bookmark_recent_';
 
 
     // --- Local Storage Management (for explicitly saved books) ---
@@ -38,13 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 markdown: markdownText,
                 lastPage: currentPage // Save current page
             };
-            // Use a specific prefix for explicitly saved books
             localStorage.setItem(localStorageBookPrefix + title, JSON.stringify(bookData));
             console.log(`Book "${title}" saved to local storage.`);
-            listSavedBooks(); // Refresh the saved books list
+            listSavedBooks();
         } catch (e) {
             console.error("Failed to save book to local storage:", e);
-            // Handle potential storage full errors gracefully
             loadingStatus.textContent = "Warning: Could not save book to local storage.";
         }
     }
@@ -55,9 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item) {
                 const bookData = JSON.parse(item);
                 console.log(`Book "${title}" loaded from local storage.`);
-                loadContent(bookData.markdown, bookData.lastPage); // Load content and last page
-                // Add to recent list if not already there
-                addRecentBook({ title: bookData.title, url: null }); // URL is null for locally saved
+                loadContent(bookData.markdown, bookData.lastPage, bookData.title); // Pass title
+                addRecentBook({ title: bookData.title, url: null });
                 return true;
             }
         } catch (e) {
@@ -67,11 +72,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function listSavedBooks() {
-        savedBooksList.innerHTML = ''; // Clear current list
+        savedBooksList.innerHTML = '';
         const books = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            // Filter by the prefix for explicitly saved books
             if (key.startsWith(localStorageBookPrefix)) {
                 try {
                     const item = localStorage.getItem(key);
@@ -80,11 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         books.push({ key: key, title: bookData.title });
                     } else {
                          console.warn(`Invalid saved book data in localStorage key: ${key}`);
-                         // Optionally remove invalid data: localStorage.removeItem(key);
                     }
                 } catch (e) {
                      console.error(`Error parsing saved book localStorage item for key: ${key}`, e);
-                      // Optionally remove corrupt data: localStorage.removeItem(key);
                 }
             }
         }
@@ -93,20 +95,19 @@ document.addEventListener('DOMContentLoaded', () => {
             books.forEach(book => {
                 const li = document.createElement('li');
                 li.textContent = book.title;
-                li.dataset.key = book.key; // Store the key
+                li.dataset.key = book.key;
                 li.addEventListener('click', () => {
-                    // Extract original title from key by removing prefix
                     const originalTitle = book.key.replace(localStorageBookPrefix, '');
                     loadBookFromLocalStorage(originalTitle);
                 });
                 savedBooksList.appendChild(li);
             });
             clearSavedBooksButton.style.display = 'block';
-            savedBooksSection.style.display = 'block'; // Show the section if there are saved books
+            savedBooksSection.style.display = 'block';
         } else {
             savedBooksList.innerHTML = '<li>No locally saved books found.</li>';
             clearSavedBooksButton.style.display = 'none';
-             savedBooksSection.style.display = 'none'; // Hide the section if no saved books
+             savedBooksSection.style.display = 'none';
         }
     }
 
@@ -118,29 +119,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.removeItem(key);
                 }
             }
-            listSavedBooks(); // Refresh the list
-            // If the currently loaded book was cleared, go back to loading screen
+            listSavedBooks();
             if (!currentlyLoadedBookTitle || !localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
-                 showLoadingArea();
+                 showLoadingScreenInterface();
             }
         }
     }
 
-    // --- Recent Files Management (for repository books) ---
+    // --- Recent Files Management ---
     function addRecentBook(book) {
         let recentBooks = getRecentBooks();
-        // Check if the book is already in the recent list (by URL for repo books, or title for local)
         const isAlreadyRecent = recentBooks.some(recent =>
             (book.url && recent.url === book.url) || (!book.url && recent.title === book.title)
         );
 
         if (!isAlreadyRecent) {
-            // Add the new book to the beginning of the list
             recentBooks.unshift({ title: book.title, url: book.url });
-            // Keep the list at a reasonable size (e.g., the last 10-20 recent books)
             recentBooks = recentBooks.slice(0, 20);
             localStorage.setItem('recentBooks', JSON.stringify(recentBooks));
-            listRecentBooks(); // Refresh the recent books list
+            listRecentBooks();
         }
     }
 
@@ -150,22 +147,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function listRecentBooks() {
-        recentBooksList.innerHTML = ''; // Clear current list
+        recentBooksList.innerHTML = '';
         const recentBooks = getRecentBooks();
 
         if (recentBooks.length > 0) {
             recentBooks.forEach(book => {
                 const li = document.createElement('li');
                 li.textContent = book.title;
-                li.dataset.url = book.url; // Store the URL (or null for local)
-                li.dataset.title = book.title; // Store the title
+                li.dataset.url = book.url;
+                li.dataset.title = book.title;
                 li.addEventListener('click', () => {
                     if (book.url) {
-                         loadBookFromURL(book.url, book.title); // Load from URL for repo books
+                         loadBookFromURL(book.url, book.title);
                     } else {
-                         loadBookFromLocalStorage(book.title); // Load from local storage for saved files
+                         loadBookFromLocalStorage(book.title);
                     }
-
                 });
                 recentBooksList.appendChild(li);
             });
@@ -191,33 +187,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (theme === 'system') {
             body.classList.add('system-theme');
-            // System theme is handled by CSS media query
         } else {
             body.classList.add(`${theme}-theme`);
         }
-        // Save preference
         localStorage.setItem('theme', theme);
     }
 
     function applySavedTheme() {
-        const savedTheme = localStorage.getItem('theme');
-        const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-
-        if (savedTheme) {
-            const radio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
-            if (radio) {
-                radio.checked = true;
-                setTheme(savedTheme);
-            } else {
-                 // Fallback if saved theme value is invalid
-                 document.querySelector('input[name="theme"][value="system"]').checked = true;
-                 setTheme('system');
-            }
-        } else {
-            // Default to system theme if no saved preference
-             document.querySelector('input[name="theme"][value="system"]').checked = true;
-             setTheme('system');
+        const savedTheme = localStorage.getItem('theme') || 'system'; // Default to system
+        const radio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+        if (radio) {
+            radio.checked = true;
         }
+        setTheme(savedTheme);
+    }
+
+    // --- Text Justification ---
+    function setJustifyText(justify) {
+        if (justify) {
+            bookContainer.classList.add('text-justify');
+        } else {
+            bookContainer.classList.remove('text-justify');
+        }
+        localStorage.setItem('justifyText', justify);
+        if (bookContent.length > 0) { // Re-paginate if content is loaded as justification can change flow
+            pages = paginateContent(bookContent);
+            renderPage(currentPage);
+        }
+    }
+
+    function applySavedJustification() {
+        const savedJustify = localStorage.getItem('justifyText') === 'true';
+        justifyTextCheckbox.checked = savedJustify;
+        setJustifyText(savedJustify);
     }
 
 
@@ -230,210 +232,161 @@ document.addEventListener('DOMContentLoaded', () => {
         function addBlock() {
             if (currentBlock.trim() !== '') {
                  const trimmedBlock = currentBlock.trim();
-
-                 // Check for block italics (whole line wrapped in single underscores)
-                 // Use a regex to be more robust
                  const italicBlockMatch = trimmedBlock.match(/^\_([^_]+)\_$/);
                  if (italicBlockMatch && italicBlockMatch[1].trim().length > 0) {
                      parsedContent.push(`<em>${italicBlockMatch[1].trim()}</em>`);
-
-                 // Check for the *number* pattern at the beginning of a paragraph block
                  } else {
                      const sectionMatch = trimmedBlock.match(/^\*(\d+)\*\s*/);
                      if (sectionMatch) {
-                        // Render as just the number inside the span
                         parsedContent.push(`<span class="section-number">${sectionMatch[1]}</span>` + trimmedBlock.substring(sectionMatch[0].length).trim());
                      } else {
-                         // Regular paragraph
-                         parsedContent.push(trimmedBlock);
+                         parsedContent.push(`<p>${trimmedBlock}</p>`); // Wrap paragraphs in <p>
                      }
                  }
-
                 currentBlock = '';
             }
         }
 
         for (const line of lines) {
             const trimmedLine = line.trim();
-
-
             if (trimmedLine === '') {
-                // Blank line, ends a paragraph block
                 addBlock();
             } else if (line.startsWith('#')) {
-                // Heading
-                addBlock(); // Add any preceding paragraph block
+                addBlock();
                 const level = line.match(/^#+/)[0].length;
-                parsedContent.push(`<h${level}>${line.replace(/^#+\s*/, '')}</h${level}>`); // Add the heading line as HTML
+                parsedContent.push(`<h${level}>${line.replace(/^#+\s*/, '')}</h${level}>`);
             } else if (line.startsWith('-------')) {
-                 // Horizontal Rule
-                 addBlock(); // Add any preceding block
-                 parsedContent.push('<hr>'); // Add the HR as HTML
-            }
-             else {
-                // Paragraph text (can include lines for block italics before addBlock)
+                 addBlock();
+                 parsedContent.push('<hr>');
+            } else {
                 if (currentBlock !== '') {
-                    currentBlock += '\n'; // Keep newline within a block for proper italic detection later if needed
+                    currentBlock += '\n';
                 }
                 currentBlock += line;
             }
         }
-        addBlock(); // Add the last block
-
-        // After getting blocks, process paragraphs for potential inline italics (optional, but good practice)
-        // This specific book format doesn't seem to use inline italics much,
-        // but this would be the place to add a replace for _word_ or _multiple words_ within <p> tags.
-        // For now, the block italic logic should handle the "Translated By Thomas Common" case.
-
-        console.log("Parsed Content:", parsedContent); // Log parsed content for debugging
+        addBlock();
+        console.log("Parsed Content:", parsedContent);
         return parsedContent;
     }
 
     // --- Pagination ---
     function paginateContent(content) {
-         // Check if content is empty
-         if (!content || content.length === 0) {
-             return [];
-         }
-
+         if (!content || content.length === 0) return [];
         const bookPages = [];
         let currentPageContent = [];
         let currentPageHeight = 0;
 
-        // Get current page dimensions (dynamic based on window size)
         const isDesktop = window.innerWidth >= 768;
-        // No navigation bar height to subtract anymore
-        const pagePadding = 20; // Padding on the .page element
-        const bookContainerPadding = 20; // Padding on the #book-container
-        const availableHeight = window.innerHeight - (bookContainerPadding * 2); // Viewport height - total top/bottom padding on container
-        const pageHeight = availableHeight; // Use full available height for pagination calculation
-        const pageWidth = (window.innerWidth / (isDesktop ? 2 : 1)) - (pagePadding * 2); // Viewport width / pages per view - total left/right padding on page
+        const pagePadding = 20;
+        const bookContainerPadding = 20;
+        // Consider sidebar width for available page width
+        const currentSidebarWidth = sideMenu.classList.contains('expanded') && window.innerWidth >= 768 ?
+                                    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-expanded')) :
+                                    (window.innerWidth >= 768 ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-collapsed')) : 0);
+
+        const availableWidthForBook = window.innerWidth - currentSidebarWidth;
+        const availableHeight = window.innerHeight - (bookContainerPadding * 2);
+        const pageHeight = availableHeight;
+        const pageWidth = (availableWidthForBook / (isDesktop ? 2 : 1)) - (pagePadding * 2) - (isDesktop ? 10 : 0) ; // 10 for gap between pages
 
 
-        // Helper to estimate element height
         function estimateHeight(elementHTML) {
             const tempDiv = document.createElement('div');
             tempDiv.style.position = 'absolute';
             tempDiv.style.visibility = 'hidden';
-            tempDiv.style.width = pageWidth + 'px'; // Constrain width to page width (content area width)
-             // Apply relevant text styles for accurate measurement
-            tempDiv.style.fontSize = '1rem'; // Base font size
-            tempDiv.style.lineHeight = '1.6'; // Base line height
-            tempDiv.style.fontFamily = 'serif'; // Font family
-             // Ensure padding/margin is consistent with .page content styles (resetting defaults)
+            tempDiv.style.width = pageWidth + 'px';
+            tempDiv.style.fontSize = '1rem';
+            tempDiv.style.lineHeight = '1.6';
+            tempDiv.style.fontFamily = 'serif';
             tempDiv.style.padding = '0';
             tempDiv.style.margin = '0';
 
             // Apply specific CSS margins for height calculation
             if (elementHTML.startsWith('<h1')) {
-                 tempDiv.style.marginTop = '2.5em';
-                 tempDiv.style.marginBottom = '0.5em';
+                 tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '0.5em';
             } else if (elementHTML.startsWith('<h2') || elementHTML.startsWith('<h3')) {
-                tempDiv.style.marginTop = '2.5em';
-                tempDiv.style.marginBottom = '0.5em';
+                tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '0.5em';
             } else if (elementHTML.startsWith('<span class="section-number">')) {
-                 tempDiv.style.marginTop = '2.5em';
-                 tempDiv.style.marginBottom = '1em';
+                 tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '1em';
             } else if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<em>')) {
-                 tempDiv.style.marginTop = '0';
-                 tempDiv.style.marginBottom = '1em';
+                 tempDiv.style.marginTop = '0'; tempDiv.style.marginBottom = '1em';
             } else if (elementHTML === '<hr>') {
-                 tempDiv.style.marginTop = '1em';
-                 tempDiv.style.marginBottom = '1em';
+                 tempDiv.style.marginTop = '1em'; tempDiv.style.marginBottom = '1em';
             }
-
+            // If text justification is active, apply it for height estimation
+            if (justifyTextCheckbox.checked && elementHTML.startsWith('<p>')) {
+                tempDiv.style.textAlign = 'justify';
+            }
 
             tempDiv.innerHTML = elementHTML;
             document.body.appendChild(tempDiv);
-            const height = tempDiv.getBoundingClientRect().height; // Use getBoundingClientRect for more accurate height
+            const height = tempDiv.getBoundingClientRect().height;
             document.body.removeChild(tempDiv);
-
-             // Add a small buffer per block to account for rounding or minor inconsistencies
-             const blockBuffer = 1; // Adjust as needed
+            const blockBuffer = 1;
             return height + blockBuffer;
         }
 
         for (const block of content) {
-            const blockHeight = estimateHeight(block); // Use the already generated HTML string
-
-            // Check if adding the block exceeds current page height
-            // Add a small tolerance to prevent very minor overflows
-            const tolerance = 1; // Pixels
+            const blockHeight = estimateHeight(block);
+            const tolerance = 1;
             if (currentPageHeight + blockHeight > pageHeight + tolerance && currentPageContent.length > 0) {
-                // Start a new page
                 bookPages.push(currentPageContent);
-                currentPageContent = [block]; // Add the block to the new page
+                currentPageContent = [block];
                 currentPageHeight = blockHeight;
             } else {
-                // Add to current page
                 currentPageContent.push(block);
                 currentPageHeight += blockHeight;
             }
         }
-
-        // Add the last page
         if (currentPageContent.length > 0) {
             bookPages.push(currentPageContent);
         }
-
-        console.log("Paginated Pages:", bookPages); // Log pages for debugging
+        console.log("Paginated Pages:", bookPages);
         return bookPages;
     }
 
 
-    // --- Render Pages ---
+    // --- Render Pages & Update Progress ---
     function renderPage(pageIndex) {
         const isDesktop = window.innerWidth >= 768;
-        const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length; // Calculate total viewable units
+        const totalBookPages = pages.length;
 
-        // Update page progress in the menu
-        if (pages.length > 0) {
-             const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
-             const displayPageEnd = isDesktop ? Math.min((pageIndex * 2) + 2, pages.length) : pageIndex + 1;
-            menuPageInfo.textContent = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${pages.length}`;
-             progressSection.style.display = 'block'; // Show progress section
+        if (totalBookPages > 0) {
+            const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
+            const displayPageEnd = isDesktop ? Math.min((pageIndex * 2) + 2, totalBookPages) : pageIndex + 1;
+
+            const progressTextExpanded = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${totalBookPages}`;
+            menuPageInfo.textContent = progressTextExpanded;
+            progressSectionExpanded.style.display = 'block';
+
+            // Vertical progress: current page (center of spread for desktop) / total pages
+            const currentProgressPage = isDesktop ? displayPageStart : displayPageStart;
+            verticalPageInfo.textContent = `${currentProgressPage}\n━━\n${totalBookPages}`;
+            collapsedProgress.style.display = 'block';
+
         } else {
-             menuPageInfo.textContent = "Page 0 of 0";
-             progressSection.style.display = 'none'; // Hide progress section
+            menuPageInfo.textContent = "Page 0 of 0";
+            progressSectionExpanded.style.display = 'none';
+            verticalPageInfo.textContent = "0\n━━\n0";
+            collapsedProgress.style.display = 'none';
         }
-
 
         pageLeft.innerHTML = '';
         pageRight.innerHTML = '';
 
         if (isDesktop) {
-            // Desktop view: Display two pages
             const leftPageIndex = pageIndex * 2;
             const rightPageIndex = pageIndex * 2 + 1;
-
-            if (pages[leftPageIndex]) {
-                pageLeft.innerHTML = pages[leftPageIndex].join('');
-            } else {
-                 pageLeft.innerHTML = ''; // Blank page if no content
-            }
-            if (pages[rightPageIndex]) {
-                pageRight.innerHTML = pages[rightPageIndex].join('');
-            } else {
-                 pageRight.innerHTML = ''; // Blank page if no content
-            }
-
-
+            if (pages[leftPageIndex]) pageLeft.innerHTML = pages[leftPageIndex].join('');
+            if (pages[rightPageIndex]) pageRight.innerHTML = pages[rightPageIndex].join('');
         } else {
-            // Mobile view: Display one page
-            const content = pages[pageIndex];
-            if (content) {
-                pageLeft.innerHTML = content.join('');
-            } else {
-                 pageLeft.innerHTML = ''; // Blank page if no content
-            }
-             pageRight.innerHTML = ''; // Ensure right page is empty on mobile
+            if (pages[pageIndex]) pageLeft.innerHTML = pages[pageIndex].join('');
         }
 
-        // Scroll pages to top when rendering new content (important if content overflowed)
         pageLeft.scrollTop = 0;
         pageRight.scrollTop = 0;
 
-        // Save current page to local storage if a book is loaded (only for explicitly saved books)
         if (bookContent.length > 0 && currentlyLoadedBookTitle && localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
             try {
                  const item = localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle);
@@ -452,18 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
      function nextPage() {
         const isDesktop = window.innerWidth >= 768;
         const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
-
-        if (isDesktop) {
-             if (currentPage < totalPageSets - 1) {
-                 currentPage++;
-                 renderPage(currentPage);
-             }
-
-        } else {
-            if (currentPage < pages.length - 1) {
-                currentPage++;
-                renderPage(currentPage);
-            }
+        if (currentPage < totalPageSets - 1) {
+            currentPage++;
+            renderPage(currentPage);
         }
     }
 
@@ -474,109 +418,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Handle keyboard navigation (left/right arrows for page, space/enter for next)
     document.addEventListener('keydown', (event) => {
-        // Check if a book is loaded and menu is closed
-        if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
+        if (bookContent.length > 0 && !sideMenu.classList.contains('expanded')) { // Only when menu is collapsed or on mobile where it overlays
             if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') {
-                nextPage();
-                event.preventDefault(); // Prevent default browser behavior (scrolling, button click)
+                nextPage(); event.preventDefault();
             } else if (event.key === 'ArrowLeft') {
-                prevPage();
-                event.preventDefault(); // Prevent default browser scrolling
+                prevPage(); event.preventDefault();
             }
         }
-         // Allow Escape key to close menu regardless of book state
-         if (event.key === 'Escape') {
-             if (!sideMenu.classList.contains('hidden')) {
-                 closeMenu();
-             }
-         }
+        if (event.key === 'Escape' && sideMenu.classList.contains('expanded')) {
+            toggleMenu(); // Close menu with Escape
+        }
     });
 
-    // Handle mouse click navigation on pages
-    pageLeft.addEventListener('click', () => {
-         if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
-             prevPage();
-         }
+    pageLeft.addEventListener('click', (event) => {
+         // Prevent click handling if menu is expanded and overlay is visible
+        if (bookContent.length > 0 && !sideMenu.classList.contains('expanded')) {
+            // On desktop, if clicking on the left half of the left page, go previous.
+            // On mobile, any click on left page goes previous.
+            if (window.innerWidth >=768) {
+                if (event.clientX < pageLeft.offsetWidth / 2) prevPage();
+                else nextPage(); // Or next if on right half
+            } else {
+                 prevPage();
+            }
+        }
     });
 
     pageRight.addEventListener('click', () => {
-         if (bookContent.length > 0 && sideMenu.classList.contains('hidden')) {
+        if (bookContent.length > 0 && !sideMenu.classList.contains('expanded')) {
              nextPage();
          }
     });
 
 
     // --- Load Content and Initialize ---
-    let currentlyLoadedBookTitle = null; // To track the currently loaded book for saving progress
+    let currentlyLoadedBookTitle = null;
 
-    // Function to show the loading area and hide book/menu
-    function showLoadingArea() {
+    function showLoadingScreenInterface() { // Renamed for clarity
         loadingArea.style.display = 'block';
         bookContainer.style.display = 'none';
-        menuToggle.style.display = 'none';
-        sideMenu.classList.add('hidden'); // Ensure menu is closed
-        overlay.classList.add('hidden'); // Ensure overlay is hidden
+        sideMenu.style.display = 'none'; // Hide new sidebar on loading screen
         document.body.classList.remove('book-loaded');
-        currentlyLoadedBookTitle = null; // Reset loaded book
-        listSavedBooks(); // Refresh the saved books list
-        listRecentBooks(); // Refresh the recent books list
+        document.body.classList.remove('menu-expanded'); // Ensure this is reset
+        currentlyLoadedBookTitle = null;
+        listSavedBooks();
+        listRecentBooks();
     }
 
-    // Load markdown content from a URL
     async function loadBookFromURL(url, title, initialPage = 0) {
          loadingStatus.textContent = `Loading from URL: ${url}...`;
          try {
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const markdownText = await response.text();
-            loadContent(markdownText, initialPage, title); // Pass title to loadContent
-             // Add to recent list after successful loading
+            loadContent(markdownText, initialPage, title);
             addRecentBook({ title: title, url: url });
-
          } catch (error) {
              console.error("Error fetching markdown from URL:", error);
              loadingStatus.textContent = `Error loading URL: ${error.message}`;
-             showLoadingArea(); // Go back to loading area on failure
+             showLoadingScreenInterface();
          }
     }
 
 
-    // Load markdown content (internal processing)
     function loadContent(markdownText, initialPage = 0, title = 'Untitled Book') {
         loadingStatus.textContent = 'Parsing content...';
         bookContent = parseMarkdown(markdownText);
-
         loadingStatus.textContent = 'Paginating content...';
-        // Recalculate pagination whenever content is loaded
         pages = paginateContent(bookContent);
 
         if (pages.length > 0) {
-            // Attempt to set the initial page, but ensure it's within bounds
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
             currentPage = Math.min(initialPage, totalPageSets > 0 ? totalPageSets - 1 : 0);
 
             renderPage(currentPage);
             loadingArea.style.display = 'none';
-            bookContainer.style.display = 'flex'; // Show book container
-            menuToggle.style.display = 'block'; // Show menu toggle
-            document.body.classList.add('book-loaded'); // Add class to body
-            loadingStatus.textContent = ''; // Clear status
-             // Set currently loaded book title (used for saving progress later)
-             currentlyLoadedBookTitle = title;
-
+            bookContainer.style.display = 'flex';
+            sideMenu.style.display = 'flex'; // Show new sidebar
+            document.body.classList.add('book-loaded');
+            loadingStatus.textContent = '';
+            currentlyLoadedBookTitle = title;
+            // Ensure menu is collapsed initially when a new book loads
+            if (sideMenu.classList.contains('expanded')) {
+                toggleMenu(false); // Force collapse, don't toggle
+            }
+            collapsedProgress.style.display = 'block'; // Show collapsed progress
         } else {
             loadingStatus.textContent = 'Could not process book content or book is empty.';
-            menuPageInfo.textContent = "Page 0 of 0"; // Update menu progress
-            progressSection.style.display = 'none'; // Hide progress section
-             showLoadingArea(); // Go back to loading area on failure
+            menuPageInfo.textContent = "Page 0 of 0";
+            progressSectionExpanded.style.display = 'none';
+            verticalPageInfo.textContent = "";
+            collapsedProgress.style.display = 'none';
+            showLoadingScreenInterface();
         }
-         closeMenu(); // Close menu after loading content
-
     }
 
     // --- Event Listeners for Loading ---
@@ -586,18 +522,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingStatus.textContent = `Loading file: ${file.name}...`;
             const reader = new FileReader();
             reader.onload = (e) => {
-                 // Use filename as title for local files
                 const title = file.name.replace(/\.md$/, '');
-                 // Optionally, ask user if they want to save to local storage permanently
-                 // If yes, call saveBookToLocalStorage(title, e.target.result);
-                 // Otherwise, just load it
-                loadContent(e.target.result, 0, title); // Load content directly
-                 addRecentBook({ title: title, url: null }); // Add to recent list
-
+                loadContent(e.target.result, 0, title);
+                addRecentBook({ title: title, url: null });
             };
-            reader.onerror = (e) => {
-                loadingStatus.textContent = `Error loading file: ${e.target.error}`;
-            };
+            reader.onerror = (e) => loadingStatus.textContent = `Error loading file: ${e.target.error}`;
             reader.readAsText(file);
         }
     });
@@ -605,12 +534,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadUrlButton.addEventListener('click', async () => {
         const url = urlInput.value.trim();
         if (url) {
-             // Attempt to extract a title from the URL or content after fetching
-             // For now, use URL filename as a placeholder title before fetching
             const urlParts = url.split('/');
             const placeholderTitle = urlParts[urlParts.length - 1].replace(/\.md$/, '') || 'Untitled URL Book';
-            loadBookFromURL(url, placeholderTitle); // Load from the URL
-
+            loadBookFromURL(url, placeholderTitle);
         } else {
             loadingStatus.textContent = 'Please enter a URL.';
         }
@@ -619,17 +545,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Repository Book List and Search ---
     async function fetchRepositoryBooks() {
         try {
-            // Assuming books_index.json is at the root of the deployed site
             const response = await fetch('books_index.json');
             if (!response.ok) {
-                 // If the index is not found, hide the repository section
                  document.querySelector('.load-option h3').textContent = 'Repository books not available.';
                  bookSearchInput.style.display = 'none';
                  repositoryBooksList.style.display = 'none';
                  return;
             }
             allRepositoryBooks = await response.json();
-            renderRepositoryBooks(allRepositoryBooks); // Render initial list
+            renderRepositoryBooks(allRepositoryBooks);
         } catch (error) {
             console.error("Error fetching repository book index:", error);
              document.querySelector('.load-option h3').textContent = 'Error loading repository books.';
@@ -639,16 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderRepositoryBooks(booksToRender) {
-        repositoryBooksList.innerHTML = ''; // Clear current list
+        repositoryBooksList.innerHTML = '';
         if (booksToRender.length > 0) {
             booksToRender.forEach(book => {
                 const li = document.createElement('li');
                 li.textContent = `${book.title} by ${book.author} (${book.year})`;
-                li.dataset.url = book.url; // Store the URL
-                li.dataset.title = book.title; // Store the title
-                li.addEventListener('click', () => {
-                    loadBookFromURL(book.url, book.title); // Load the book from its URL
-                });
+                li.dataset.url = book.url;
+                li.dataset.title = book.title;
+                li.addEventListener('click', () => loadBookFromURL(book.url, book.title));
                 repositoryBooksList.appendChild(li);
             });
         } else {
@@ -658,81 +580,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function filterRepositoryBooks() {
         const searchTerm = bookSearchInput.value.toLowerCase();
-        const filteredBooks = allRepositoryBooks.filter(book => {
-            return book.title.toLowerCase().includes(searchTerm) ||
-                   book.author.toLowerCase().includes(searchTerm);
-        });
+        const filteredBooks = allRepositoryBooks.filter(book =>
+            book.title.toLowerCase().includes(searchTerm) || book.author.toLowerCase().includes(searchTerm)
+        );
         renderRepositoryBooks(filteredBooks);
     }
 
 
-    // --- Menu Toggling ---
-    function openMenu() {
-        sideMenu.classList.remove('hidden');
-        overlay.classList.remove('hidden');
-    }
+    // --- Menu Toggling (New Sidebar) ---
+    function toggleMenu(forceState) { // forceState can be true (expand) or false (collapse)
+        const isCurrentlyExpanded = sideMenu.classList.contains('expanded');
+        const expand = forceState === undefined ? !isCurrentlyExpanded : forceState;
 
-    function closeMenu() {
-        sideMenu.classList.add('hidden');
-        overlay.classList.add('hidden');
-    }
-
-    // Toggle menu: if hidden, open; if open, close
-    menuToggle.addEventListener('click', () => {
-        if (sideMenu.classList.contains('hidden')) {
-            openMenu();
+        if (expand) {
+            sideMenu.classList.add('expanded');
+            expandedMenuContent.classList.remove('hidden');
+            document.body.classList.add('menu-expanded');
+             if (window.innerWidth >= 768) overlay.classList.add('active'); // Show overlay on desktop when expanded
         } else {
-            closeMenu();
+            sideMenu.classList.remove('expanded');
+            expandedMenuContent.classList.add('hidden');
+            document.body.classList.remove('menu-expanded');
+            if (window.innerWidth >= 768) overlay.classList.remove('active'); // Hide overlay
+        }
+
+        // Re-paginate because sidebar width changes affect page width
+        if (bookContent.length > 0) {
+            pages = paginateContent(bookContent);
+            renderPage(currentPage);
+        }
+    }
+
+    menuToggle.addEventListener('click', () => toggleMenu());
+    overlay.addEventListener('click', () => {
+        if (sideMenu.classList.contains('expanded')) {
+            toggleMenu(false); // Force collapse
         }
     });
 
-    overlay.addEventListener('click', closeMenu);
 
-
-    // --- Theme Selection ---
+    // --- Theme and Justification Event Listeners ---
     themeRadios.forEach(radio => {
-        radio.addEventListener('change', (event) => {
-            setTheme(event.target.value);
-        });
+        radio.addEventListener('change', (event) => setTheme(event.target.value));
+    });
+    justifyTextCheckbox.addEventListener('change', (event) => {
+        setJustifyText(event.target.checked);
     });
 
 
-     // Re-paginate and re-render on window resize
     window.addEventListener('resize', () => {
-        if (bookContent.length > 0) { // Only re-paginate if content is loaded
-            // Re-calculate pages with new dimensions
-            pages = paginateContent(bookContent);
+        if (bookContent.length > 0) {
+            // If transitioning between mobile/desktop, menu state might need adjustment
+            if (window.innerWidth < 768) {
+                // On mobile, if menu was expanded via desktop style, ensure it's correctly overlaying
+                // The CSS should handle this, but JS can ensure body class is correct
+                if (sideMenu.classList.contains('expanded')) {
+                    document.body.classList.add('menu-expanded'); // Ensure this class if menu is open
+                }
+                overlay.classList.remove('active'); // Overlay logic is simpler on mobile (CSS driven by menu state)
 
-            // Adjust current page index if necessary after resize pagination
+            } else { // Desktop
+                if (sideMenu.classList.contains('expanded')) {
+                     overlay.classList.add('active');
+                } else {
+                    overlay.classList.remove('active');
+                }
+            }
+
+            pages = paginateContent(bookContent);
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
-             // Ensure currentPage is within the new bounds
             if (currentPage >= totalPageSets) {
                 currentPage = totalPageSets > 0 ? totalPageSets - 1 : 0;
             }
-
-            renderPage(currentPage); // Re-render the current (adjusted) page
+            renderPage(currentPage);
         }
     });
 
     // --- Initialization ---
     function init() {
-        applySavedTheme(); // Apply saved theme preference
-        listSavedBooks(); // List saved books on the loading page
-        listRecentBooks(); // List recent files on the loading page
-        fetchRepositoryBooks(); // Fetch and display repository books
+        applySavedTheme();
+        applySavedJustification();
+        listSavedBooks();
+        listRecentBooks();
+        fetchRepositoryBooks();
+        showLoadingScreenInterface(); // Start with loading screen
 
-        // Initial state (show loading area)
-         showLoadingArea();
+        clearSavedBooksButton.addEventListener('click', clearSavedBooks);
+        clearRecentBooksButton.addEventListener('click', clearRecentBooks);
+        bookSearchInput.addEventListener('input', filterRepositoryBooks);
 
-         // Add event listeners
-         clearSavedBooksButton.addEventListener('click', clearSavedBooks);
-         clearRecentBooksButton.addEventListener('click', clearRecentBooks);
-         bookSearchInput.addEventListener('input', filterRepositoryBooks); // Live filtering
-
-
+        // Initial check for desktop to hide overlay if menu isn't expanded
+        if (window.innerWidth >= 768 && !sideMenu.classList.contains('expanded')) {
+            overlay.classList.remove('active');
+        }
     }
 
-    init(); // Initialize the application
+    init();
 
 });

@@ -45,30 +45,42 @@
 
     </div>
 
+    <div id="side-menu">
+        <div id="menu-toggle">
+            &#x2261; <span class="tooltiptext">Toggle Menu</span>
+        </div>
+        <div id="collapsed-progress" class="menu-section" style="display: none;">
+            <span id="vertical-page-info"></span>
+        </div>
+        <div id="expanded-menu-content" class="hidden">
+            <div class="menu-section">
+                <h4>Settings</h4>
+                <div class="menu-subsection">
+                     <h5>Appearance</h5>
+                     <label><input type="radio" name="theme" value="light"> Light</label><br>
+                     <label><input type="radio" name="theme" value="dark"> Dark</label><br>
+                     <label><input type="radio" name="theme" value="system" checked> System</label>
+                </div>
+                <div class="menu-subsection">
+                    <h5>Text</h5>
+                    <label><input type="checkbox" id="justify-text"> Justify Paragraphs</label>
+                </div>
+            </div>
+            <div class="menu-section" id="progress-section-expanded" style="display: none;">
+                <h4>Progress</h4>
+                <span id="menu-page-info"></span>
+            </div>
+        </div>
+         <div style="height: 50px;"></div>
+    </div>
+
     <div id="book-container" style="display: none;">
         <div id="page-left" class="page"></div>
         <div id="page-right" class="page"></div>
     </div>
 
-    <div id="menu-toggle" style="display: none;">
-        &#x2261; </div>
+    <div id="overlay" class="hidden"></div>
 
-    <div id="side-menu" class="hidden">
-        <div class="menu-section">
-            <h4>Settings</h4>
-            <div class="menu-subsection">
-                 <h5>Appearance</h5>
-                 <label><input type="radio" name="theme" value="light"> Light</label><br>
-                 <label><input type="radio" name="theme" value="dark"> Dark</label><br>
-                 <label><input type="radio" name="theme" value="system"> System</label> </div>
-        </div>
-        <div class="menu-section" id="progress-section" style="display: none;">
-            <h4>Progress</h4>
-            <span id="menu-page-info"></span>
-        </div>
-         <div style="height: 50px;"></div>
-    </div>
-
-    <div id="overlay" class="hidden"></div> <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
