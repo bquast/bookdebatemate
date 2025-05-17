@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sidebar Menu Elements
     const sideMenu = document.getElementById('side-menu');
-    const menuToggle = document.getElementById('menu-toggle'); // The hamburger icon itself
+    const menuToggle = document.getElementById('menu-toggle');
     const expandedMenuContent = document.getElementById('expanded-menu-content');
 
     // Collapsed Sidebar Specific Content
@@ -28,12 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const collapsedBookTitleDiv = document.getElementById('collapsed-book-title');
     const verticalBookTitleText = document.getElementById('vertical-book-title-text');
     const collapsedProgressDiv = document.getElementById('collapsed-progress');
-    const simplePageInfo = document.getElementById('simple-page-info'); // For "current---total"
+    const simplePageInfo = document.getElementById('simple-page-info');
 
     // Settings Elements in Expanded Menu
     const themeRadios = document.querySelectorAll('input[name="theme"]');
     const justifyTextCheckbox = document.getElementById('justify-text');
-    const menuPageInfo = document.getElementById('menu-page-info'); // For "Page X-Y of Z" in expanded
+    const menuPageInfo = document.getElementById('menu-page-info');
     const progressSectionExpanded = document.getElementById('progress-section-expanded');
 
     // AI Debater Elements
@@ -44,27 +44,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const aiSendButton = document.getElementById('ai-send-button');
     const aiStatus = document.getElementById('ai-status');
 
-    const overlayMobile = document.getElementById('overlay-mobile'); // For mobile menu overlay
+    const overlayMobile = document.getElementById('overlay-mobile');
 
     // State Variables
-    let bookContent = []; // Array of parsed HTML blocks (paragraphs, headings, etc.)
-    let pages = [];       // Array of arrays, where each inner array is a page of HTML blocks
-    let currentPage = 0;  // Current page index (0-based, refers to a "spread" on desktop)
-    let allRepositoryBooks = []; // Full list from books_index.json
-    let currentlyLoadedBookTitle = null; // Title of the currently loaded book
-    let conversationHistory = []; // For AI Debater
+    let bookContent = [];
+    let pages = [];
+    let currentPage = 0;
+    let allRepositoryBooks = [];
+    let currentlyLoadedBookTitle = null;
+    let conversationHistory = [];
 
     const localStorageBookPrefix = 'bookmark_book_';
-    const localStorageRecentPrefix = 'bookmark_recent_'; // Not currently used, but good for differentiation
 
-    // --- Local Storage Management (Explicitly Saved Books) ---
+    // --- Local Storage Management ---
     function saveBookToLocalStorage(title, markdownText) {
         try {
             const bookData = { title: title, markdown: markdownText, lastPage: currentPage };
             localStorage.setItem(localStorageBookPrefix + title, JSON.stringify(bookData));
-            listSavedBooks(); // Refresh the list
+            listSavedBooks();
         } catch (e) {
-            console.error("Failed to save book to local storage:", e);
+            console.error("LS Save Error:", e);
             loadingStatus.textContent = "Warning: Could not save book to local storage.";
         }
     }
@@ -74,11 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = localStorage.getItem(localStorageBookPrefix + title);
             if (item) {
                 const bookData = JSON.parse(item);
-                loadContent(bookData.markdown, bookData.lastPage, bookData.title);
-                addRecentBook({ title: bookData.title, url: null }); // null URL for local
+                loadContent(bookData.markdown, bookData.lastPage, bookData.title, bookData.title.endsWith('.txt')); // Assume .txt if not specified
+                addRecentBook({ title: bookData.title, url: null });
                 return true;
             }
-        } catch (e) { console.error(`Failed to load book "${title}" from local storage:`, e); }
+        } catch (e) { console.error(`LS Load Error for "${title}":`, e); }
         return false;
     }
 
@@ -90,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const bookData = JSON.parse(localStorage.getItem(key));
                     if (bookData && bookData.title && bookData.markdown) books.push({ key: key, title: bookData.title });
-                } catch (e) { console.error(`Error parsing saved book for key: ${key}`, e); }
+                } catch (e) { console.error(`LS Parse Error for key: ${key}`, e); }
             }
         }
         if (books.length > 0) {
@@ -119,10 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Recent Files Management ---
     function addRecentBook(book) {
         let recentBooks = getRecentBooks();
-        const isAlreadyRecent = recentBooks.some(recent => (book.url && recent.url === book.url) || (!book.url && recent.title === book.title));
+        const isAlreadyRecent = recentBooks.some(rb => (book.url && rb.url === book.url) || (!book.url && rb.title === book.title));
         if (!isAlreadyRecent) {
             recentBooks.unshift({ title: book.title, url: book.url });
             localStorage.setItem('recentBooks', JSON.stringify(recentBooks.slice(0, 20)));
@@ -153,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Appearance Settings (Theme & Justification) ---
+    // --- Appearance Settings ---
     function setTheme(theme) {
         document.body.classList.remove('light-theme', 'dark-theme', 'system-theme');
         document.body.classList.add(theme === 'system' ? 'system-theme' : `${theme}-theme`);
@@ -170,15 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function setJustifyText(justify) {
         bookContainer.classList.toggle('text-justify', justify);
         localStorage.setItem('justifyText', justify);
-        if (bookContent.length > 0) { // Re-paginate if justification changes text flow
-            pages = paginateContent(bookContent); renderPage(currentPage);
-        }
+        if (bookContent.length > 0) { pages = paginateContent(bookContent); renderPage(currentPage); }
     }
 
     function applySavedJustification() {
         const savedJustify = localStorage.getItem('justifyText') === 'true';
         justifyTextCheckbox.checked = savedJustify;
-        setJustifyText(savedJustify); // Apply without re-paginating if no content yet
+        setJustifyText(savedJustify);
     }
 
     // --- Markdown Parsing ---
@@ -186,16 +182,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const lines = markdownText.split('\n'); const parsedContent = []; let currentBlock = '';
         function addBlock() {
             if (currentBlock.trim() !== '') {
-                const trimmedBlock = currentBlock.trim(); // This block might contain multiple original lines
-                const italicBlockMatch = trimmedBlock.match(/^\_([^_]+)\_$/); // Italic for whole block
+                const trimmedBlock = currentBlock.trim();
+                const italicBlockMatch = trimmedBlock.match(/^\_([^_]+)\_$/);
                 if (italicBlockMatch && italicBlockMatch[1].trim().length > 0) {
                     parsedContent.push(`<em>${italicBlockMatch[1].trim().replace(/\n/g, '<br>')}</em>`);
                 } else {
-                    const sectionMatch = trimmedBlock.match(/^\*(\d+)\*\s*/); // Section number
+                    const sectionMatch = trimmedBlock.match(/^\*(\d+)\*\s*/);
                     if (sectionMatch) {
                         parsedContent.push(`<span class="section-number">${sectionMatch[1]}</span>` + trimmedBlock.substring(sectionMatch[0].length).trim().replace(/\n/g, '<br>'));
                     } else {
-                        // Default paragraph: wrap in <p>, convert internal newlines to <br>
                         parsedContent.push(`<p>${trimmedBlock.replace(/\n/g, '<br>')}</p>`);
                     }
                 }
@@ -204,16 +199,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         for (const line of lines) {
             const trimmedLine = line.trim();
-            if (trimmedLine === '' && currentBlock.trim() !== '') { // An empty line signifies end of current block
-                addBlock();
-            } else if (line.startsWith('#')) { addBlock(); const level = line.match(/^#+/)[0].length; parsedContent.push(`<h${level}>${line.replace(/^#+\s*/, '')}</h${level}>`); }
+            if (trimmedLine === '' && currentBlock.trim() !== '') addBlock();
+            else if (line.startsWith('#')) { addBlock(); const level = line.match(/^#+/)[0].length; parsedContent.push(`<h${level}>${line.replace(/^#+\s*/, '')}</h${level}>`); }
             else if (line.startsWith('-------')) { addBlock(); parsedContent.push('<hr>'); }
-            else if (trimmedLine !== '') { // Accumulate non-empty lines into currentBlock
-                if (currentBlock !== '') currentBlock += '\n'; // Preserve original newlines within a block
+            else if (trimmedLine !== '') {
+                if (currentBlock !== '') currentBlock += '\n';
                 currentBlock += line;
             }
         }
-        addBlock(); // Add the last block
+        addBlock();
         return parsedContent;
     }
 
@@ -225,8 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pagePadding = 20; const bookContainerPadding = 20;
         const sidebarCurrentWidth = isDesktop ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue(sideMenu.classList.contains('expanded') ? '--sidebar-width-expanded' : '--sidebar-width-collapsed')) : 0;
         const availableWidthForBook = window.innerWidth - sidebarCurrentWidth;
-        const pageHeight = window.innerHeight - (bookContainerPadding * 2); // Usable height for page content
-        const pageWidth = (availableWidthForBook / (isDesktop ? 2 : 1)) - (pagePadding * 2) - (isDesktop ? 10 : 0); // Usable width (gap for desktop)
+        const pageHeight = window.innerHeight - (bookContainerPadding * 2);
+        const pageWidth = (availableWidthForBook / (isDesktop ? 2 : 1)) - (pagePadding * 2) - (isDesktop ? 10 : 0);
 
         function estimateHeight(elementHTML) {
             const tempDiv = document.createElement('div');
@@ -239,11 +233,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (justifyTextCheckbox.checked && elementHTML.startsWith('<p>')) tempDiv.style.textAlign = 'justify';
             tempDiv.innerHTML = elementHTML; document.body.appendChild(tempDiv);
             const height = tempDiv.getBoundingClientRect().height; document.body.removeChild(tempDiv);
-            return height + 1; // blockBuffer
+            return height + 1;
         }
         for (const block of content) {
             const blockHeight = estimateHeight(block);
-            if (currentPageHeight + blockHeight > pageHeight + 1 && currentPageContent.length > 0) { // Tolerance of 1px
+            if (currentPageHeight + blockHeight > pageHeight + 1 && currentPageContent.length > 0) {
                 bookPages.push(currentPageContent); currentPageContent = [block]; currentPageHeight = blockHeight;
             } else {
                 currentPageContent.push(block); currentPageHeight += blockHeight;
@@ -256,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Render Pages & Update Progress ---
     function renderPage(pageIndex) {
         const isDesktop = window.innerWidth >= 768;
-        const totalBookPages = pages.length; // Actual number of internal pages
+        const totalBookPages = pages.length;
 
         if (totalBookPages > 0) {
             const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
@@ -264,10 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const progressTextExpanded = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${totalBookPages}`;
             menuPageInfo.textContent = progressTextExpanded;
             progressSectionExpanded.style.display = 'block';
-
             const currentSimpleProgressPage = isDesktop ? displayPageStart : displayPageStart;
             simplePageInfo.innerHTML = `${currentSimpleProgressPage}<br>---<br>${totalBookPages}`;
-
             verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title";
             collapsedBookTitleDiv.style.display = 'block';
             collapsedProgressDiv.style.display = 'block';
@@ -288,7 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         pageLeft.scrollTop = 0; pageRight.scrollTop = 0;
 
-        // Save current page to local storage for explicitly saved books
         if (bookContent.length > 0 && currentlyLoadedBookTitle && localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
             try {
                 const item = localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle);
@@ -296,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bookData = JSON.parse(item); bookData.lastPage = currentPage;
                     localStorage.setItem(localStorageBookPrefix + currentlyLoadedBookTitle, JSON.stringify(bookData));
                 }
-            } catch (e) { console.error("Failed to save current page to local storage:", e); }
+            } catch (e) { console.error("LS page save error:", e); }
         }
     }
 
@@ -313,20 +304,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (event) => {
         const isMenuExpanded = sideMenu.classList.contains('expanded');
-        if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) { // Allow nav if menu collapsed or on mobile
+        if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) {
             if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') { nextPage(); event.preventDefault(); }
             else if (event.key === 'ArrowLeft') { prevPage(); event.preventDefault(); }
         }
-        if (event.key === 'Escape' && isMenuExpanded) toggleMenu(false); // Close menu with Escape
+        if (event.key === 'Escape' && isMenuExpanded) toggleMenu(false);
     });
 
     pageLeft.addEventListener('click', (event) => {
         const isMenuExpanded = sideMenu.classList.contains('expanded');
         if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) {
-            if (window.innerWidth >= 768) { // Desktop: click left half for prev, right half for next
+            if (window.innerWidth >= 768) {
                 if (event.clientX < pageLeft.getBoundingClientRect().left + pageLeft.offsetWidth / 2) prevPage();
                 else nextPage();
-            } else { prevPage(); } // Mobile: any click on left page is prev
+            } else { prevPage(); }
         }
     });
     pageRight.addEventListener('click', () => {
@@ -334,124 +325,107 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) nextPage();
     });
 
-    // --- UI State Management (Loading Screen vs. Book View) ---
+    // --- UI State Management ---
     function showLoadingScreenInterface() {
         loadingArea.style.display = 'block'; bookContainer.style.display = 'none';
         sideMenu.style.display = 'none'; document.body.classList.remove('book-loaded', 'menu-expanded');
         currentlyLoadedBookTitle = null;
         listSavedBooks(); listRecentBooks();
-        // Hide collapsed sidebar content specifically related to a loaded book
         collapsedBookTitleDiv.style.display = 'none';
         collapsedProgressDiv.style.display = 'none';
-        if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none'; // Hide AI button
-        if (aiDebaterSection) aiDebaterSection.style.display = 'none'; // Hide AI chat
-        conversationHistory = []; // Reset AI chat history
-        if(aiChatMessages) aiChatMessages.innerHTML = ''; // Clear AI messages
+        if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none';
+        if (aiDebaterSection) aiDebaterSection.style.display = 'none';
+        conversationHistory = [];
+        if(aiChatMessages) aiChatMessages.innerHTML = '';
     }
 
     // --- Book Loading ---
     async function loadBookFromURL(url, title, initialPage = 0) {
         loadingStatus.textContent = `Loading: ${title}...`;
         try {
-            const response = await fetch(url); // Direct fetch
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
-            }
-
-            const contentType = response.headers.get('content-type');
-            const arrayBuffer = await response.arrayBuffer();
             let markdownText;
-            let detectedEncoding = 'utf-8';
+            const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
 
-            if (contentType) {
-                const charsetMatch = contentType.match(/charset=([^;]+)/i);
-                if (charsetMatch && charsetMatch[1]) {
-                    const explicitCharset = charsetMatch[1].trim().toLowerCase();
-                    if (['latin1', 'iso-8859-1', 'windows-1252', 'cp1252'].includes(explicitCharset)) {
-                        detectedEncoding = 'iso-8859-1';
-                    } else if (explicitCharset === 'utf-8' || explicitCharset === 'utf8') {
-                        detectedEncoding = 'utf-8';
-                    } else {
-                        console.warn(`Unsupported charset: ${explicitCharset}. Trying fallback.`);
-                        detectedEncoding = url.endsWith('.txt') ? 'iso-8859-1' : 'utf-8';
-                    }
-                } else if (url.endsWith('.txt')) {
-                    console.log('No charset in Content-Type for .txt, assuming ISO-8859-1.');
-                    detectedEncoding = 'iso-8859-1';
+            if (isExternalUrl) {
+                console.log(`Proxying external URL: ${url} with title hint: ${title}`);
+                const proxyUrlPath = '/fetch-book'; // Ensure this path matches your CF function deployment
+                const proxyResponse = await fetch(`${proxyUrlPath}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`);
+                
+                if (!proxyResponse.ok) {
+                    throw new Error(`Proxy error! Status: ${proxyResponse.status} - ${await proxyResponse.text()}`);
                 }
-            } else if (url.endsWith('.txt')) {
-                console.log('No Content-Type header for .txt, assuming ISO-8859-1.');
-                detectedEncoding = 'iso-8859-1';
+                markdownText = await proxyResponse.text();
+            } else {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+                markdownText = await response.text();
             }
-            console.log(`Attempting to decode with: ${detectedEncoding}`);
-            try {
-                const decoder = new TextDecoder(detectedEncoding, { fatal: true });
-                markdownText = decoder.decode(arrayBuffer);
-            } catch (e) {
-                console.warn(`Failed to decode as ${detectedEncoding} (fatal): ${e.message}. Trying non-fatal UTF-8.`);
-                const fallbackDecoder = new TextDecoder('utf-8', { fatal: false });
-                markdownText = fallbackDecoder.decode(arrayBuffer);
-                if (detectedEncoding !== 'iso-8859-1' && url.endsWith('.txt') && markdownText.includes('')) {
-                     console.warn('UTF-8 fallback still problematic for .txt, trying non-fatal ISO-8859-1.');
-                     const latin1FallbackDecoder = new TextDecoder('iso-8859-1', {fatal: false});
-                     markdownText = latin1FallbackDecoder.decode(arrayBuffer);
-                }
-            }
-            loadContent(markdownText, initialPage, title);
+
+            const isTxtSource = url.endsWith('.txt') || (isExternalUrl && !url.endsWith('.md') && !url.endsWith('.markdown'));
+            loadContent(markdownText, initialPage, title, isTxtSource);
             addRecentBook({ title: title, url: url });
+
         } catch (error) {
-            console.error("Error fetching markdown from URL:", error);
-            loadingStatus.textContent = `Error: ${error.message}. Check console for CORS/network issues.`;
+            console.error("Error loading book from URL:", error);
+            loadingStatus.textContent = `Error: ${error.message}`;
             showLoadingScreenInterface();
         }
     }
-
-    function loadContent(markdownText, initialPage = 0, title = 'Untitled Book') {
-        loadingStatus.textContent = 'Parsing content...'; bookContent = parseMarkdown(markdownText);
-        currentlyLoadedBookTitle = title; // Set before pagination for title display
+    
+    function loadContent(markdownText, initialPage = 0, title = 'Untitled Book', isTxtSource = false) {
+        loadingStatus.textContent = 'Parsing content...';
+        let tempBookContent = parseMarkdown(markdownText);
+        
+        let hasH1 = tempBookContent.slice(0, 5).some(block => block.toLowerCase().startsWith('<h1>'));
+        if (title && (isTxtSource || !hasH1)) {
+            tempBookContent.unshift(`<h1>${title}</h1>`);
+            console.log(`Prepended H1 title: ${title}`);
+        }
+        
+        bookContent = tempBookContent;
+        currentlyLoadedBookTitle = title;
         loadingStatus.textContent = 'Paginating content...'; pages = paginateContent(bookContent);
 
         if (pages.length > 0) {
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
             currentPage = Math.min(initialPage, totalPageSets > 0 ? totalPageSets - 1 : 0);
-            renderPage(currentPage); // This will also set the vertical book title via currentlyLoadedBookTitle
+            renderPage(currentPage);
             loadingArea.style.display = 'none'; bookContainer.style.display = 'flex';
             sideMenu.style.display = 'flex'; document.body.classList.add('book-loaded');
-            if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'block'; // Show AI button
+            if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'block';
             loadingStatus.textContent = '';
-            if (sideMenu.classList.contains('expanded')) toggleMenu(false); // Collapse menu on new book load
+            if (sideMenu.classList.contains('expanded')) toggleMenu(false);
         } else {
-            loadingStatus.textContent = 'Could not process book content or book is empty.';
+            loadingStatus.textContent = 'Could not process content or book is empty.';
             menuPageInfo.textContent = "Page 0 of 0"; progressSectionExpanded.style.display = 'none';
             simplePageInfo.innerHTML = "0<br>---<br>0"; verticalBookTitleText.textContent = "";
             if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none';
-            showLoadingScreenInterface(); // Revert to loading screen on failure
+            showLoadingScreenInterface();
         }
-        // Reset AI Debater state for new book
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
         if(aiStatus) aiStatus.textContent = '';
-        if(aiDebaterSection) aiDebaterSection.style.display = 'none'; // Hide AI chat section initially
+        if(aiDebaterSection) aiDebaterSection.style.display = 'none';
     }
 
-    // Event Listeners for Loading Books
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0]; if (!file) return;
         loadingStatus.textContent = `Loading file: ${file.name}...`;
         const reader = new FileReader();
         reader.onload = (e) => {
-            const title = file.name.replace(/\.md$/, '');
-            loadContent(e.target.result, 0, title);
+            const title = file.name.replace(/\.(md|txt)$/i, '');
+            const isTxtSource = file.name.toLowerCase().endsWith('.txt');
+            loadContent(e.target.result, 0, title, isTxtSource);
             addRecentBook({ title: title, url: null });
         };
         reader.onerror = () => loadingStatus.textContent = 'Error loading file.';
-        reader.readAsText(file);
+        reader.readAsText(file); // Assumes UTF-8 for local files; could add encoding choice for local files too if needed
     });
 
     loadUrlButton.addEventListener('click', () => {
         const url = urlInput.value.trim(); if (!url) { loadingStatus.textContent = 'Please enter a URL.'; return; }
-        const placeholderTitle = url.substring(url.lastIndexOf('/') + 1).replace(/\.(md|txt)$/, '') || 'Book from URL';
+        const placeholderTitle = url.substring(url.lastIndexOf('/') + 1).replace(/\.(md|txt|markdown)$/i, '') || 'Book from URL';
         loadBookFromURL(url, placeholderTitle);
     });
 
@@ -462,12 +436,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Failed to load book index');
             allRepositoryBooks = await response.json(); renderRepositoryBooks(allRepositoryBooks);
         } catch (error) {
-            console.error("Error fetching repository book index:", error);
-            const repoTitleEl = loadingArea.querySelector('.load-option h3'); // More robust selection
-            if (repoTitleEl && repoTitleEl.textContent.includes("Load from Repository")) {
-                repoTitleEl.textContent = 'Repository books not available.';
-            }
-            bookSearchInput.style.display = 'none'; repositoryBooksList.style.display = 'none';
+            console.error("Repo fetch error:", error);
+            const repoTitleEl = Array.from(loadingArea.querySelectorAll('.load-option h3')).find(h3 => h3.textContent.includes("Load from Repository"));
+            if (repoTitleEl) repoTitleEl.textContent = 'Repository books not available.';
+            if (bookSearchInput) bookSearchInput.style.display = 'none';
+            if (repositoryBooksList) repositoryBooksList.style.display = 'none';
         }
     }
 
@@ -481,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.addEventListener('click', () => loadBookFromURL(book.url, book.title));
                 repositoryBooksList.appendChild(li);
             });
-        } else { repositoryBooksList.innerHTML = '<li>No books found matching your search.</li>'; }
+        } else { repositoryBooksList.innerHTML = '<li>No books found matching search.</li>'; }
     }
 
     function filterRepositoryBooks() {
@@ -489,29 +462,22 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRepositoryBooks(allRepositoryBooks.filter(b => b.title.toLowerCase().includes(searchTerm) || b.author.toLowerCase().includes(searchTerm)));
     }
 
-    // --- Menu Toggling (Right Sidebar) ---
-    function toggleMenu(forceState) { // forceState can be true (expand) or false (collapse)
+    // --- Menu Toggling ---
+    function toggleMenu(forceState) {
         const expand = forceState === undefined ? !sideMenu.classList.contains('expanded') : forceState;
         sideMenu.classList.toggle('expanded', expand);
-        expandedMenuContent.classList.toggle('hidden', !expand); // Toggle visibility of expanded content
+        expandedMenuContent.classList.toggle('hidden', !expand);
         document.body.classList.toggle('menu-expanded', expand);
-
-        if (overlayMobile) { // Handle mobile overlay
-            overlayMobile.classList.toggle('active', window.innerWidth < 768 && expand);
-        }
-
-        // Re-paginate because sidebar width changes affect page width calculation
+        if (overlayMobile) overlayMobile.classList.toggle('active', window.innerWidth < 768 && expand);
         if (bookContent.length > 0) { pages = paginateContent(bookContent); renderPage(currentPage); }
     }
 
     menuToggle.addEventListener('click', () => toggleMenu());
     if (overlayMobile) {
-        overlayMobile.addEventListener('click', () => { // Close menu if overlay is clicked on mobile
-            if (sideMenu.classList.contains('expanded')) toggleMenu(false);
-        });
+        overlayMobile.addEventListener('click', () => { if (sideMenu.classList.contains('expanded')) toggleMenu(false); });
     }
 
-    // --- AI Debater Functions & Event Listeners ---
+    // --- AI Debater ---
     function getCurrentPageText() {
         let text = ""; const isDesktop = window.innerWidth >= 768;
         const leftPageIdx = isDesktop ? currentPage * 2 : currentPage;
@@ -544,27 +510,23 @@ document.addEventListener('DOMContentLoaded', () => {
         aiStatus.textContent = 'AI is thinking...'; aiSendButton.disabled = true; aiUserInput.disabled = true;
         const currentPageContent = getCurrentPageText();
         conversationHistory.push({ role: "user", content: userText });
-
         const systemPrompt = `You are an AI Debater. The user is reading a book. Current section:\n---\n${currentPageContent}\n---\nExplain this section briefly and engage the user in a debate about it.`;
 
         try {
-            // CONCEPTUAL: Replace with actual call to your Cloudflare Function for LLM
             console.log("Sending to conceptual AI Debater backend:", { systemPrompt, conversation: conversationHistory });
-            // const response = await fetch('/api/ai-debater', { /* ... */ });
+            // const response = await fetch('/api/ai-debater', { /* ... */ }); // Real fetch call
             // const aiResponse = await response.json();
             // addMessageToChat(aiResponse.reply, 'ai');
             // conversationHistory.push({ role: "assistant", content: aiResponse.reply });
-            
-            // Placeholder simulation:
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-            const mockReply = `Interesting point about "${userText.substring(0, 20)}...". Considering the context: "${currentPageContent.substring(0, 50)}...", what if we look at it from another perspective?`;
+            await new Promise(resolve => setTimeout(resolve, 1200)); // Mock delay
+            const mockReply = `Regarding "${userText.substring(0, 20)}...", in the context of "${currentPageContent.substring(0, 40)}...", what is your take on that?`;
             addMessageToChat(mockReply, 'ai');
             conversationHistory.push({ role: "assistant", content: mockReply });
             aiStatus.textContent = '';
         } catch (error) {
-            console.error("Error with AI Debater:", error);
+            console.error("AI Debater Error:", error);
             addMessageToChat(`Error: ${error.message || "Could not reach AI."}`, 'ai');
-            aiStatus.textContent = 'Error communicating with AI.';
+            aiStatus.textContent = 'Error with AI.';
         } finally {
             aiSendButton.disabled = false; aiUserInput.disabled = false; aiUserInput.focus();
         }
@@ -574,10 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
         aiDebaterButtonCollapsed.addEventListener('click', () => {
             if (!sideMenu.classList.contains('expanded')) toggleMenu(true);
             aiDebaterSection.style.display = 'block';
-            if (conversationHistory.length === 0) { // Initial prompt or greeting
-                 addMessageToChat("Let's discuss the current pages!", 'ai'); // Initial AI greeting
-                 // Or trigger an initial analysis:
-                 // conversationHistory.push({role: "user", content: "Please explain this current section."}); handleSendToAI();
+            if (conversationHistory.length === 0) {
+                 addMessageToChat("Let's discuss the current page content.", 'ai');
             }
             aiUserInput.focus();
         });
@@ -585,15 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (aiSendButton) aiSendButton.addEventListener('click', handleSendToAI);
     if (aiUserInput) aiUserInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendToAI(); } });
 
-    // --- Event Listeners for Settings & Resize ---
+    // --- Event Listeners & Init ---
     themeRadios.forEach(radio => radio.addEventListener('change', (e) => setTheme(e.target.value)));
     justifyTextCheckbox.addEventListener('change', (e) => setJustifyText(e.target.checked));
 
     window.addEventListener('resize', () => {
         if (bookContent.length > 0) {
-            if (overlayMobile) { // Manage mobile overlay visibility on resize
-                overlayMobile.classList.toggle('active', window.innerWidth < 768 && sideMenu.classList.contains('expanded'));
-            }
+            if (overlayMobile) overlayMobile.classList.toggle('active', window.innerWidth < 768 && sideMenu.classList.contains('expanded'));
             pages = paginateContent(bookContent);
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
@@ -602,15 +560,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Initialization ---
     function init() {
         applySavedTheme(); applySavedJustification();
         listSavedBooks(); listRecentBooks(); fetchRepositoryBooks();
-        showLoadingScreenInterface(); // Start with loading screen
+        showLoadingScreenInterface();
         clearSavedBooksButton.addEventListener('click', clearSavedBooks);
         clearRecentBooksButton.addEventListener('click', clearRecentBooks);
-        bookSearchInput.addEventListener('input', filterRepositoryBooks);
-        if (overlayMobile && window.innerWidth >= 768) overlayMobile.classList.remove('active'); // Ensure mobile overlay is off on desktop init
+        if (bookSearchInput) bookSearchInput.addEventListener('input', filterRepositoryBooks);
+        if (overlayMobile && window.innerWidth >= 768) overlayMobile.classList.remove('active');
     }
 
     init();
