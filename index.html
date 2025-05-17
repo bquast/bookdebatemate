@@ -1,12 +1,3 @@
-<label><input type="radio" name="theme" value="light"> Light</label><br>
-<label><input type="radio" name="theme" value="dark"> Dark</label><br>
-<label><input type="radio" name="theme"> System</label> ```
-
-When `applySavedTheme` tries to find `input[name="theme"][value="system"]`, it cannot find the "System" radio button because it doesn't have the `value="system"` attribute. This causes `document.querySelector` to return `null`, and attempting to set `.checked` on `null` throws the error.
-
-**To fix this, update your `index.html` file and add the `value="system"` attribute to the "System" theme radio button:**
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
