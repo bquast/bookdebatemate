@@ -1,179 +1,115 @@
 // functions/fetch-book.js
 
-function cleanTextAndExtractMetadata(text, titleHintForPreambleStripper) {
+function processPgaText(text, titleHint) {
     let lines = text.split('\n');
     let extractedTitle = null;
     let extractedAuthor = null;
-    let contentStartIndex = 0;
-    const titleAuthorLinesIndices = new Set();
+    let authorLineIndex = -1;
+    let titleLineIndex = -1;
 
-    // --- Stage 1: Try to identify and extract Title & Author from typical metadata block ---
-    // Define patterns for Title and Author lines
-    const titlePattern = /^title:\s*(.+)/i;
-    const authorPattern = /^author:\s*(.+)/i;
-    // Other common metadata lines to help identify end of metadata block or to remove
-    const otherMetadataPatterns = [
-        /^illustrator:\s*(.+)/i,
-        /^translator:\s*(.+)/i,
-        /^language:\s*(.+)/i,
-        /^ebook no\.[:\s]*(.+)/i, // "EBook No.:" or "EBook No. :"
-        /^release date:\s*(.+)/i,
-        /^date first posted:\s*(.+)/i,
-        /^date most recently updated:\s*(.+)/i,
-        /^\*\*\* START OF (THIS |THE )?PROJECT GUTENBERG EBOOK/i, // Start marker
-        /^\*\*\*\s*END OF (THIS |THE )?PROJECT GUTENBERG EBOOK/i // End marker
-    ];
+    // Find the *last* occurrences of Title: and Author: before a likely content start,
+    // or within a reasonable header block. PGA often has them near the end of metadata.
+    const contentStartKeywords = ["chapter 1", "chapter i", "part one", "part i", "book one", "book i", "prologue", "foreword", "preface", "introduction", (titleHint || "a^b^c").toLowerCase()];
+    let possibleContentStartIndex = lines.length;
 
-    let metadataBlockEndIndex = -1;
-
-    for (let i = 0; i < Math.min(lines.length, 50); i++) { // Scan first 50 lines for metadata
-        const currentLine = lines[i];
-        const currentLineTrimmed = currentLine.trim();
-
-        let match = currentLineTrimmed.match(titlePattern);
-        if (match && match[1]) {
-            extractedTitle = match[1].trim();
-            titleAuthorLinesIndices.add(i);
-            continue; 
+    for (let i = 0; i < lines.length; i++) {
+        if (contentStartKeywords.some(marker => lines[i].trim().toLowerCase().startsWith(marker))) {
+            possibleContentStartIndex = i;
+            break;
         }
-
-        match = currentLineTrimmed.match(authorPattern);
-        if (match && match[1]) {
-            extractedAuthor = match[1].trim();
-            titleAuthorLinesIndices.add(i);
-            continue;
+    }
+    if (possibleContentStartIndex === lines.length && lines.length > 50) { // If no clear start, maybe it's just after ~30-50 lines of preamble
+        possibleContentStartIndex = Math.min(50, lines.length);
+         while (possibleContentStartIndex < lines.length && lines[possibleContentStartIndex].trim() === "") {
+            possibleContentStartIndex++; // find next non-blank
         }
+    }
 
-        if (otherMetadataPatterns.some(p => p.test(currentLineTrimmed))) {
-            titleAuthorLinesIndices.add(i); // Mark for potential removal from body if they persist
-            if (currentLineTrimmed.toLowerCase().startsWith("*** start of")) {
-                 metadataBlockEndIndex = i; // Strong indicator
-                 break;
+
+    // Search for Title and Author backwards from the possible content start or from a max preamble search depth
+    let searchLimit = Math.min(possibleContentStartIndex, 70); // Don't search too far back into the document
+
+    for (let i = searchLimit -1; i >= 0; i--) {
+        const line = lines[i];
+        const lineLower = line.toLowerCase().trim();
+        if (lineLower.startsWith("title:")) {
+            const titleValue = line.substring(lineLower.indexOf("title:") + "title:".length).trim();
+            if (titleValue && !extractedTitle) { // Take the last one found before content
+                extractedTitle = titleValue;
+                titleLineIndex = i;
             }
-            continue;
+        } else if (lineLower.startsWith("author:")) {
+            const authorValue = line.substring(lineLower.indexOf("author:") + "author:".length).trim();
+            if (authorValue && !extractedAuthor) { // Take the last one found before content
+                extractedAuthor = authorValue;
+                authorLineIndex = i;
+            }
         }
-
-        // If we've found a title and author, and the current line is blank,
-        // or something that doesn't look like continued metadata,
-        // this might be the end of the explicit title/author block.
-        if (extractedTitle && extractedAuthor && (currentLineTrimmed === "" || i > 10)) {
-            metadataBlockEndIndex = i -1; // Previous line was last metadata
-            break;
-        }
-        if (currentLineTrimmed === "" && i > 5 && (extractedTitle || extractedAuthor)) { // Blank line after some metadata
-             metadataBlockEndIndex = i -1;
-             break;
-        }
-         if (currentLineTrimmed !== "" && !otherMetadataPatterns.some(p => p.test(currentLineTrimmed)) && i > 5 && (extractedTitle || extractedAuthor)) {
-            metadataBlockEndIndex = i - 1; // Non-metadata line after title/author found
-            break;
-        }
+        if (extractedTitle && extractedAuthor) break; // Stop if both found
     }
     
-    if (metadataBlockEndIndex === -1 && titleAuthorLinesIndices.size > 0) {
-        metadataBlockEndIndex = Math.max(...Array.from(titleAuthorLinesIndices));
-    } else if (metadataBlockEndIndex === -1) {
-        metadataBlockEndIndex = 0; // No clear metadata block found
+    // If not found in the targeted block, try a broader search in the first few lines as a fallback
+    if (!extractedTitle || !extractedAuthor) {
+        for (let i = 0; i < Math.min(lines.length, 30); i++) {
+            const line = lines[i];
+            const lineLower = line.toLowerCase().trim();
+            if (!extractedTitle && lineLower.startsWith("title:")) {
+                 extractedTitle = line.substring(lineLower.indexOf("title:") + "title:".length).trim();
+                 titleLineIndex = i;
+            }
+            if (!extractedAuthor && lineLower.startsWith("author:")) {
+                 extractedAuthor = line.substring(lineLower.indexOf("author:") + "author:".length).trim();
+                 authorLineIndex = i;
+            }
+        }
     }
 
 
-    // --- Stage 2: Find the true start of the book's narrative content ---
-    // This should be *after* the metadata block AND any remaining boilerplate.
-    contentStartIndex = metadataBlockEndIndex + 1; // Start looking after identified metadata
+    // If title still not found from content, use the hint from URL/filename
+    if (!extractedTitle && titleHint) {
+        extractedTitle = titleHint;
+    }
 
-    const pgaLicenseMarker = "gutenberg.net.au/license.html";
-    const contentStartKeywords = [
-        "chapter 1", "chapter i", "part one", "part i", "book one", "book i",
-        "introduction", "prologue", "foreword", "preface",
-        // Add the extracted title (if any) or titleHint as a very strong content start marker
-        // This helps if the title is repeated just before the content.
-        (extractedTitle || titleHintForPreambleStripper || "a^b^c").toLowerCase() // "a^b^c" as unlikely placeholder
-    ];
-    const genericPreambleEndMarkers = [ // For non-PGA sources primarily
-        "*** end of this project gutenberg ebook",
-        "*** end of the project gutenberg ebook",
-        "* * * * *",
-        "----------------------------------------------------"
-    ];
-
-    let foundContentStart = false;
-    for (let i = contentStartIndex; i < lines.length; i++) {
-        const lineTrimmed = lines[i].trim();
-        const lineLower = lineTrimmed.toLowerCase();
-
-        if (lineTrimmed === "") continue; // Skip blank lines when searching for start
-
-        // Check for generic end-of-preamble markers (could appear before content start markers)
-        if (genericPreambleEndMarkers.some(marker => lineLower.includes(marker))) {
-            contentStartIndex = i + 1; // Content starts after this marker
-            // Continue searching from here for a more specific contentStartKeyword
-            continue;
-        }
-        
-        // Check for explicit content start keywords
-        if (contentStartKeywords.some(marker => lineLower.startsWith(marker))) {
-            contentStartIndex = i;
-            foundContentStart = true;
-            break;
-        }
-
-        // Heuristic: If we've passed typical preamble length and find a non-boilerplate line
-        const pgaBoilerplateKeywords = ["project gutenberg of australia", "ebook no", "language:", "date first posted", "date most recently updated", "be sure to check the copyright laws", "terms of the project gutenberg of australia license", "to contact project gutenberg of australia"];
-        if (i > metadataBlockEndIndex + 10 && !pgaBoilerplateKeywords.some(key => lineLower.includes(key))) {
-            // If line is not empty and doesn't seem like more PGA boilerplate after a buffer
-            contentStartIndex = i;
-            foundContentStart = true;
-            console.log("Heuristic content start based on non-boilerplate line after buffer.");
-            break;
-        }
-        
-        if (i > contentStartIndex + 150) { // Safety break if preamble is excessively long
-            console.warn("Preamble strip: Reached line limit after metadata block.");
-            break;
-        }
+    let bodyStartIndex = 0;
+    if (authorLineIndex !== -1) {
+        // Remove everything up to and including the Author line
+        bodyStartIndex = authorLineIndex + 1;
+    } else if (titleLineIndex !== -1) {
+        // If only title was found, remove up to and including title line
+        bodyStartIndex = titleLineIndex + 1;
+    } else {
+        // If neither, this means the structure is different. We might need to rely on possibleContentStartIndex
+        // or a more generic preamble stripper. For PGA, this case should be rare if Title/Author are present.
+        // For now, if no Title/Author identified in preamble to anchor removal, keep existing contentStartIndex logic
+        bodyStartIndex = possibleContentStartIndex;
+        console.warn("PGA process: Could not find clear Title/Author lines to anchor preamble removal. Relying on content start markers.");
     }
     
-    // Ensure contentStartIndex is valid and skips any leading blank lines from actual content
-    while (contentStartIndex < lines.length && lines[contentStartIndex].trim() === "") {
-        contentStartIndex++;
+    // Ensure bodyStartIndex is valid and skips any leading blank lines from actual content
+    while (bodyStartIndex < lines.length && lines[bodyStartIndex].trim() === "") {
+        bodyStartIndex++;
     }
-    contentStartIndex = Math.min(contentStartIndex, lines.length);
+    bodyStartIndex = Math.min(bodyStartIndex, lines.length);
 
-    // --- Stage 3: Construct the final output ---
-    let body = lines.slice(contentStartIndex).join('\n').trim();
+    let body = lines.slice(bodyStartIndex).join('\n').trim();
     
-    // If the actual title/author (from metadata extraction) still appears at the very start of 'body'
-    // (because contentStartIndex was before them), remove them from body to avoid duplication.
-    let tempBody = body;
-    if (extractedTitle) {
-        const titleRegex = new RegExp(`^${extractedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i');
-        tempBody = tempBody.replace(titleRegex, '');
-    }
-    if (extractedAuthor) {
-        const authorRegex = new RegExp(`^${extractedAuthor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i');
-        tempBody = tempBody.replace(authorRegex, '');
-    }
-    body = tempBody.trimStart();
-
-
+    // Construct the Markdown header
     let prependedHeader = "";
-    // Use the title extracted from metadata first, then the hint
-    const finalTitle = extractedTitle || titleHintForPreambleStripper;
-    if (finalTitle) {
-        prependedHeader += `# ${finalTitle}\n`;
+    if (extractedTitle) {
+        prependedHeader += `# ${extractedTitle.trim()}\n`;
     }
     if (extractedAuthor) {
-        prependedHeader += `## ${extractedAuthor}\n`;
+        prependedHeader += `## ${extractedAuthor.trim()}\n`;
     }
     if (prependedHeader) {
         prependedHeader += "\n"; // Blank line after header
     }
 
-    console.log(`PGA/TXT Processed. Final Title: '${finalTitle}', Author: '${extractedAuthor}'. Body starts from original line ~${contentStartIndex}.`);
+    console.log(`PGA Processed. Using Title: '${extractedTitle}', Author: '${extractedAuthor}'. Body starts from effective line ~${bodyStartIndex +1}.`);
     return prependedHeader + body;
 }
 
-
+// Main onRequestGet function (remains the same as in the previous "full script" response)
 export async function onRequestGet(context) {
     const { request } = context;
     const requestUrl = new URL(request.url);
@@ -202,8 +138,14 @@ export async function onRequestGet(context) {
                     console.warn(`Unsupported charset in Content-Type: ${cs}. Assuming ${bookUrl.endsWith('.txt') ? 'iso-8859-1' : 'utf-8'}.`);
                     sourceEncoding = bookUrl.endsWith('.txt') ? 'iso-8859-1' : 'utf-8';
                 }
-            } else if (bookUrl.endsWith('.txt')) sourceEncoding = 'iso-8859-1';
-        } else if (bookUrl.endsWith('.txt')) sourceEncoding = 'iso-8859-1';
+            } else if (bookUrl.endsWith('.txt')) {
+                 console.log('No charset in Content-Type for .txt, assuming ISO-8859-1.');
+                sourceEncoding = 'iso-8859-1';
+            }
+        } else if (bookUrl.endsWith('.txt')) {
+            console.log('No Content-Type header for .txt, assuming ISO-8859-1.');
+            sourceEncoding = 'iso-8859-1';
+        }
         
         console.log(`Decoding with source encoding: ${sourceEncoding} for URL: ${bookUrl}`);
         try {
@@ -213,11 +155,15 @@ export async function onRequestGet(context) {
             textContent = new TextDecoder('utf-8', { fatal: false }).decode(arrayBuffer);
         }
 
-        // Process for preamble and title/author formatting
-        if (bookUrl.endsWith('.txt') && (bookUrl.includes("gutenberg.net.au") || bookUrl.includes("archive.org/stream/"))) {
-            console.log(`Applying preamble stripping and metadata extraction for: ${bookUrl}`);
-            textContent = cleanTextAndExtractMetadata(textContent, bookTitleHint);
-        }
+        // Specifically process for PGA .txt files using the new logic
+        if (bookUrl.includes("gutenberg.net.au") && bookUrl.endsWith('.txt')) {
+            console.log(`Applying PGA-specific processing for: ${bookUrl}`);
+            textContent = processPgaText(textContent, bookTitleHint);
+        } 
+        // Optional: Add similar specific processing for archive.org if its preamble is different
+        // else if (bookUrl.includes("archive.org/stream/") && bookUrl.endsWith('.txt')) {
+        //     textContent = processArchiveOrgText(textContent, bookTitleHint); // A new function
+        // }
         
         return new Response(textContent, { headers: { 'Content-Type': `text/plain; charset=${finalEncoding}` } });
     } catch (error) {
