@@ -73,7 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = localStorage.getItem(localStorageBookPrefix + title);
             if (item) {
                 const bookData = JSON.parse(item);
-                loadContent(bookData.markdown, bookData.lastPage, bookData.title, bookData.title.endsWith('.txt')); // Assume .txt if not specified
+                // For locally saved books, we don't know original source type easily.
+                // Assume it's Markdown unless we store more metadata.
+                // The title injection logic in loadContent will handle if it needs an H1.
+                loadContent(bookData.markdown, bookData.lastPage, bookData.title, false); 
                 addRecentBook({ title: bookData.title, url: null });
                 return true;
             }
@@ -260,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             progressSectionExpanded.style.display = 'block';
             const currentSimpleProgressPage = isDesktop ? displayPageStart : displayPageStart;
             simplePageInfo.innerHTML = `${currentSimpleProgressPage}<br>---<br>${totalBookPages}`;
-            verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title";
+            verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title"; // Use known title for sidebar
             collapsedBookTitleDiv.style.display = 'block';
             collapsedProgressDiv.style.display = 'block';
         } else {
@@ -354,14 +357,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!proxyResponse.ok) {
                     throw new Error(`Proxy error! Status: ${proxyResponse.status} - ${await proxyResponse.text()}`);
                 }
-                markdownText = await proxyResponse.text();
-            } else {
+                markdownText = await proxyResponse.text(); // CF function returns UTF-8
+            } else { // Local relative URL (e.g. from books_index.json pointing to a local/repo file)
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
                 markdownText = await response.text();
             }
 
-            const isTxtSource = url.endsWith('.txt') || (isExternalUrl && !url.endsWith('.md') && !url.endsWith('.markdown'));
+            // Determine if the original source was likely a .txt file for title injection logic in loadContent
+            const isTxtSource = url.toLowerCase().endsWith('.txt');
             loadContent(markdownText, initialPage, title, isTxtSource);
             addRecentBook({ title: title, url: url });
 
@@ -374,16 +378,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function loadContent(markdownText, initialPage = 0, title = 'Untitled Book', isTxtSource = false) {
         loadingStatus.textContent = 'Parsing content...';
-        let tempBookContent = parseMarkdown(markdownText);
         
-        let hasH1 = tempBookContent.slice(0, 5).some(block => block.toLowerCase().startsWith('<h1>'));
-        if (title && (isTxtSource || !hasH1)) {
+        let tempBookContent = parseMarkdown(markdownText); // Text from CF function might already have # Title
+        
+        // Fallback Title Injection:
+        // Only inject H1 from `title` (filename/repo title) if parseMarkdown 
+        // didn't create an H1 from the content itself (e.g. CF function failed to add it, or it's an MD file without one).
+        let hasH1 = tempBookContent.slice(0, 3).some(block => block.toLowerCase().startsWith('<h1>'));
+        if (!hasH1 && title) {
             tempBookContent.unshift(`<h1>${title}</h1>`);
-            console.log(`Prepended H1 title: ${title}`);
+            console.log(`Fallback: Prepended H1 title ('${title}') as none was found in initial content.`);
         }
         
         bookContent = tempBookContent;
-        currentlyLoadedBookTitle = title;
+        currentlyLoadedBookTitle = title; // For sidebar display, always use the passed/known title
         loadingStatus.textContent = 'Paginating content...'; pages = paginateContent(bookContent);
 
         if (pages.length > 0) {
@@ -420,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addRecentBook({ title: title, url: null });
         };
         reader.onerror = () => loadingStatus.textContent = 'Error loading file.';
-        reader.readAsText(file); // Assumes UTF-8 for local files; could add encoding choice for local files too if needed
+        reader.readAsText(file);
     });
 
     loadUrlButton.addEventListener('click', () => {
@@ -497,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addMessageToChat(text, sender) {
+        if (!aiChatMessages) return; // Guard if element not found
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('chat-message', sender);
         messageDiv.textContent = text;
@@ -505,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleSendToAI() {
+        if (!aiUserInput || !aiSendButton || !aiStatus) return; // Guard
         const userText = aiUserInput.value.trim(); if (!userText) return;
         addMessageToChat(userText, 'user'); aiUserInput.value = '';
         aiStatus.textContent = 'AI is thinking...'; aiSendButton.disabled = true; aiUserInput.disabled = true;
@@ -528,18 +538,18 @@ document.addEventListener('DOMContentLoaded', () => {
             addMessageToChat(`Error: ${error.message || "Could not reach AI."}`, 'ai');
             aiStatus.textContent = 'Error with AI.';
         } finally {
-            aiSendButton.disabled = false; aiUserInput.disabled = false; aiUserInput.focus();
+            aiSendButton.disabled = false; aiUserInput.disabled = false; if(aiUserInput) aiUserInput.focus();
         }
     }
 
     if (aiDebaterButtonCollapsed) {
         aiDebaterButtonCollapsed.addEventListener('click', () => {
             if (!sideMenu.classList.contains('expanded')) toggleMenu(true);
-            aiDebaterSection.style.display = 'block';
-            if (conversationHistory.length === 0) {
-                 addMessageToChat("Let's discuss the current page content.", 'ai');
+            if (aiDebaterSection) aiDebaterSection.style.display = 'block';
+            if (conversationHistory.length === 0 && bookContent.length > 0) { // Only prompt if book is loaded
+                 addMessageToChat("Let's discuss the current page content!", 'ai');
             }
-            aiUserInput.focus();
+            if(aiUserInput) aiUserInput.focus();
         });
     }
     if (aiSendButton) aiSendButton.addEventListener('click', handleSendToAI);
