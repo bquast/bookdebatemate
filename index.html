@@ -5,19 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bookmark Renderer</title>
     <link rel="stylesheet" href="style.css">
-</head>
+    </head>
 <body>
 
     <div id="loading-area">
         <h2>Load a Markdown Book</h2>
-
         <div class="load-option">
             <h3>Load from Repository:</h3>
             <input type="text" id="book-search" placeholder="Search by title or author">
-            <ul id="repository-books-list">
-                </ul>
+            <ul id="repository-books-list"></ul>
         </div>
-
         <div class="load-option">
             <h3>From your computer:</h3>
             <input type="file" id="file-input" accept=".md, .txt, text/plain">
@@ -28,19 +25,15 @@
             <button id="load-url">Load URL</button>
         </div>
         <p id="loading-status"></p>
-
         <div class="load-option">
             <h3>Recent Files:</h3>
-            <ul id="recent-books-list">
-                </ul>
-             <button id="clear-recent-books" style="display: none;">Clear Recent Files</button>
+            <ul id="recent-books-list"></ul>
+            <button id="clear-recent-books" style="display: none;">Clear Recent Files</button>
         </div>
-
-         <div class="load-option" id="saved-books-section" style="display: none;">
+        <div class="load-option" id="saved-books-section" style="display: none;">
             <h3>Saved Books (Local Storage):</h3>
-            <ul id="saved-books-list">
-                </ul>
-             <button id="clear-saved-books" style="display: none;">Clear Saved Books</button>
+            <ul id="saved-books-list"></ul>
+            <button id="clear-saved-books" style="display: none;">Clear Saved Books</button>
         </div>
     </div>
 
@@ -62,6 +55,11 @@
             <div id="collapsed-progress" class="menu-section" style="display: none;">
                 <span id="simple-page-info"></span>
             </div>
+            <div id="ai-debater-button-collapsed" class="menu-section" style="display: none;">
+                <button title="AI Debater">?</button>
+            </div>
+            <div id="fullscreen-button-collapsed" class="menu-section" style="display: none;">
+                <button title="Toggle Fullscreen">&#x26F6;</button> </div>
         </div>
         <div id="expanded-menu-content" class="hidden">
             <div class="menu-section">
@@ -76,14 +74,30 @@
                     <h5>Text</h5>
                     <label><input type="checkbox" id="justify-text"> Justify Paragraphs</label>
                 </div>
+                <div class="menu-subsection">
+                    <h5>View</h5>
+                    <button id="fullscreen-button-expanded">Toggle Fullscreen</button>
+                </div>
             </div>
             <div class="menu-section" id="progress-section-expanded" style="display: none;">
                 <h4>Progress</h4>
                 <span id="menu-page-info"></span>
             </div>
+            <div class="menu-section" id="ai-debater-section" style="display: none;">
+                <h4>AI Debater</h4>
+                <div id="ai-chat-window">
+                    <div id="ai-chat-messages"></div>
+                    <div id="ai-chat-input-area">
+                        <textarea id="ai-user-input" placeholder="Debate this section..."></textarea>
+                        <button id="ai-send-button">Send</button>
+                    </div>
+                </div>
+                 <p id="ai-status" style="font-size: 0.8em; font-style: italic;"></p>
+            </div>
         </div>
     </div>
 
+    <div id="overlay-mobile" class="hidden"></div>
     <script src="script.js"></script>
 </body>
 </html>

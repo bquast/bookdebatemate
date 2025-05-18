@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const aiSendButton = document.getElementById('ai-send-button');
     const aiStatus = document.getElementById('ai-status');
 
+    // Fullscreen Buttons
+    const fullscreenButtonCollapsed = document.getElementById('fullscreen-button-collapsed');
+    const fullscreenButtonExpanded = document.getElementById('fullscreen-button-expanded');
+
     const overlayMobile = document.getElementById('overlay-mobile');
 
     // State Variables
@@ -55,6 +59,60 @@ document.addEventListener('DOMContentLoaded', () => {
     let conversationHistory = [];
 
     const localStorageBookPrefix = 'bookmark_book_';
+
+    // --- Fullscreen API Helper Functions ---
+    function isFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    }
+
+    function requestFullscreen(element) {
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) { /* Safari */
+            element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) { /* IE11 */
+            element.msRequestFullscreen();
+        } else if (element.mozRequestFullScreen) { /* Firefox */
+            element.mozRequestFullScreen();
+        }
+    }
+
+    function exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+            document.msExitFullscreen();
+        } else if (document.mozCancelFullScreen) { /* Firefox */
+            document.mozCancelFullScreen();
+        }
+    }
+
+    function toggleFullscreen() {
+        if (!isFullscreen()) {
+            requestFullscreen(document.documentElement); // Fullscreen the whole page
+        } else {
+            exitFullscreen();
+        }
+    }
+    
+    // Update button text/icon based on fullscreen state
+    function updateFullscreenButtonState() {
+        const fsButtonCollapsed = fullscreenButtonCollapsed.querySelector('button');
+        const fsButtonExpanded = fullscreenButtonExpanded; // This is the button itself
+
+        if (isFullscreen()) {
+            if(fsButtonCollapsed) fsButtonCollapsed.innerHTML = "&#x26F7;"; // Example: Square Four Open Corners (Exit Fullscreen)
+            if(fsButtonCollapsed) fsButtonCollapsed.title = "Exit Fullscreen";
+            if(fsButtonExpanded) fsButtonExpanded.textContent = "Exit Fullscreen";
+        } else {
+            if(fsButtonCollapsed) fsButtonCollapsed.innerHTML = "&#x26F6;"; // Example: Square Four Corners (Enter Fullscreen)
+            if(fsButtonCollapsed) fsButtonCollapsed.title = "Toggle Fullscreen";
+            if(fsButtonExpanded) fsButtonExpanded.textContent = "Toggle Fullscreen";
+        }
+    }
+
 
     // --- Local Storage Management ---
     function saveBookToLocalStorage(title, markdownText) {
@@ -73,9 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = localStorage.getItem(localStorageBookPrefix + title);
             if (item) {
                 const bookData = JSON.parse(item);
-                // For locally saved books, we don't know original source type easily.
-                // Assume it's Markdown unless we store more metadata.
-                // The title injection logic in loadContent will handle if it needs an H1.
                 loadContent(bookData.markdown, bookData.lastPage, bookData.title, false); 
                 addRecentBook({ title: bookData.title, url: null });
                 return true;
@@ -263,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             progressSectionExpanded.style.display = 'block';
             const currentSimpleProgressPage = isDesktop ? displayPageStart : displayPageStart;
             simplePageInfo.innerHTML = `${currentSimpleProgressPage}<br>---<br>${totalBookPages}`;
-            verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title"; // Use known title for sidebar
+            verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title";
             collapsedBookTitleDiv.style.display = 'block';
             collapsedProgressDiv.style.display = 'block';
         } else {
@@ -307,11 +362,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (event) => {
         const isMenuExpanded = sideMenu.classList.contains('expanded');
-        if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) {
+        
+        if (event.key === 'Escape') {
+            if (isFullscreen()) {
+                exitFullscreen();
+                event.preventDefault(); // Prevent other escape actions like closing menu immediately
+            } else if (isMenuExpanded) {
+                toggleMenu(false); // Close menu if not in fullscreen and menu is open
+                event.preventDefault();
+            }
+        } else if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) {
             if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') { nextPage(); event.preventDefault(); }
             else if (event.key === 'ArrowLeft') { prevPage(); event.preventDefault(); }
         }
-        if (event.key === 'Escape' && isMenuExpanded) toggleMenu(false);
     });
 
     pageLeft.addEventListener('click', (event) => {
@@ -338,8 +401,10 @@ document.addEventListener('DOMContentLoaded', () => {
         collapsedProgressDiv.style.display = 'none';
         if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none';
         if (aiDebaterSection) aiDebaterSection.style.display = 'none';
+        if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'none';
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
+        updateFullscreenButtonState(); // Reset fullscreen button text/icon
     }
 
     // --- Book Loading ---
@@ -351,24 +416,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isExternalUrl) {
                 console.log(`Proxying external URL: ${url} with title hint: ${title}`);
-                const proxyUrlPath = '/fetch-book'; // Ensure this path matches your CF function deployment
+                const proxyUrlPath = '/fetch-book';
                 const proxyResponse = await fetch(`${proxyUrlPath}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`);
-                
-                if (!proxyResponse.ok) {
-                    throw new Error(`Proxy error! Status: ${proxyResponse.status} - ${await proxyResponse.text()}`);
-                }
-                markdownText = await proxyResponse.text(); // CF function returns UTF-8
-            } else { // Local relative URL (e.g. from books_index.json pointing to a local/repo file)
+                if (!proxyResponse.ok) throw new Error(`Proxy error! Status: ${proxyResponse.status} - ${await proxyResponse.text()}`);
+                markdownText = await proxyResponse.text();
+            } else {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
                 markdownText = await response.text();
             }
-
-            // Determine if the original source was likely a .txt file for title injection logic in loadContent
             const isTxtSource = url.toLowerCase().endsWith('.txt');
             loadContent(markdownText, initialPage, title, isTxtSource);
             addRecentBook({ title: title, url: url });
-
         } catch (error) {
             console.error("Error loading book from URL:", error);
             loadingStatus.textContent = `Error: ${error.message}`;
@@ -378,20 +437,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function loadContent(markdownText, initialPage = 0, title = 'Untitled Book', isTxtSource = false) {
         loadingStatus.textContent = 'Parsing content...';
-        
-        let tempBookContent = parseMarkdown(markdownText); // Text from CF function might already have # Title
-        
-        // Fallback Title Injection:
-        // Only inject H1 from `title` (filename/repo title) if parseMarkdown 
-        // didn't create an H1 from the content itself (e.g. CF function failed to add it, or it's an MD file without one).
+        let tempBookContent = parseMarkdown(markdownText);
         let hasH1 = tempBookContent.slice(0, 3).some(block => block.toLowerCase().startsWith('<h1>'));
         if (!hasH1 && title) {
             tempBookContent.unshift(`<h1>${title}</h1>`);
-            console.log(`Fallback: Prepended H1 title ('${title}') as none was found in initial content.`);
+            console.log(`Fallback: Prepended H1 title ('${title}') as none was found.`);
         }
-        
         bookContent = tempBookContent;
-        currentlyLoadedBookTitle = title; // For sidebar display, always use the passed/known title
+        currentlyLoadedBookTitle = title;
         loadingStatus.textContent = 'Paginating content...'; pages = paginateContent(bookContent);
 
         if (pages.length > 0) {
@@ -402,19 +455,22 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingArea.style.display = 'none'; bookContainer.style.display = 'flex';
             sideMenu.style.display = 'flex'; document.body.classList.add('book-loaded');
             if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'block';
+            if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'block';
             loadingStatus.textContent = '';
             if (sideMenu.classList.contains('expanded')) toggleMenu(false);
         } else {
-            loadingStatus.textContent = 'Could not process content or book is empty.';
+            loadingStatus.textContent = 'Could not process content or book empty.';
             menuPageInfo.textContent = "Page 0 of 0"; progressSectionExpanded.style.display = 'none';
             simplePageInfo.innerHTML = "0<br>---<br>0"; verticalBookTitleText.textContent = "";
             if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none';
+            if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'none';
             showLoadingScreenInterface();
         }
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
         if(aiStatus) aiStatus.textContent = '';
         if(aiDebaterSection) aiDebaterSection.style.display = 'none';
+        updateFullscreenButtonState();
     }
 
     fileInput.addEventListener('change', (event) => {
@@ -437,7 +493,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loadBookFromURL(url, placeholderTitle);
     });
 
-    // --- Repository Book List and Search ---
     async function fetchRepositoryBooks() {
         try {
             const response = await fetch('books_index.json');
@@ -470,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRepositoryBooks(allRepositoryBooks.filter(b => b.title.toLowerCase().includes(searchTerm) || b.author.toLowerCase().includes(searchTerm)));
     }
 
-    // --- Menu Toggling ---
     function toggleMenu(forceState) {
         const expand = forceState === undefined ? !sideMenu.classList.contains('expanded') : forceState;
         sideMenu.classList.toggle('expanded', expand);
@@ -505,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addMessageToChat(text, sender) {
-        if (!aiChatMessages) return; // Guard if element not found
+        if (!aiChatMessages) return;
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('chat-message', sender);
         messageDiv.textContent = text;
@@ -514,22 +568,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleSendToAI() {
-        if (!aiUserInput || !aiSendButton || !aiStatus) return; // Guard
+        if (!aiUserInput || !aiSendButton || !aiStatus) return;
         const userText = aiUserInput.value.trim(); if (!userText) return;
         addMessageToChat(userText, 'user'); aiUserInput.value = '';
         aiStatus.textContent = 'AI is thinking...'; aiSendButton.disabled = true; aiUserInput.disabled = true;
         const currentPageContent = getCurrentPageText();
         conversationHistory.push({ role: "user", content: userText });
-        const systemPrompt = `You are an AI Debater. The user is reading a book. Current section:\n---\n${currentPageContent}\n---\nExplain this section briefly and engage the user in a debate about it.`;
+        const systemPrompt = `You are an AI Debater. User is reading. Current section:\n---\n${currentPageContent}\n---\nExplain briefly & engage in debate.`;
 
         try {
             console.log("Sending to conceptual AI Debater backend:", { systemPrompt, conversation: conversationHistory });
-            // const response = await fetch('/api/ai-debater', { /* ... */ }); // Real fetch call
-            // const aiResponse = await response.json();
-            // addMessageToChat(aiResponse.reply, 'ai');
-            // conversationHistory.push({ role: "assistant", content: aiResponse.reply });
-            await new Promise(resolve => setTimeout(resolve, 1200)); // Mock delay
-            const mockReply = `Regarding "${userText.substring(0, 20)}...", in the context of "${currentPageContent.substring(0, 40)}...", what is your take on that?`;
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            const mockReply = `Regarding "${userText.substring(0, 20)}...", in context of "${currentPageContent.substring(0, 40)}...", your take?`;
             addMessageToChat(mockReply, 'ai');
             conversationHistory.push({ role: "assistant", content: mockReply });
             aiStatus.textContent = '';
@@ -546,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aiDebaterButtonCollapsed.addEventListener('click', () => {
             if (!sideMenu.classList.contains('expanded')) toggleMenu(true);
             if (aiDebaterSection) aiDebaterSection.style.display = 'block';
-            if (conversationHistory.length === 0 && bookContent.length > 0) { // Only prompt if book is loaded
+            if (conversationHistory.length === 0 && bookContent.length > 0) {
                  addMessageToChat("Let's discuss the current page content!", 'ai');
             }
             if(aiUserInput) aiUserInput.focus();
@@ -559,6 +609,19 @@ document.addEventListener('DOMContentLoaded', () => {
     themeRadios.forEach(radio => radio.addEventListener('change', (e) => setTheme(e.target.value)));
     justifyTextCheckbox.addEventListener('change', (e) => setJustifyText(e.target.checked));
 
+    // Fullscreen Button Listeners
+    if (fullscreenButtonCollapsed) {
+      fullscreenButtonCollapsed.querySelector('button').addEventListener('click', toggleFullscreen);
+    }
+    if (fullscreenButtonExpanded) {
+      fullscreenButtonExpanded.addEventListener('click', toggleFullscreen);
+    }
+    // Listen for fullscreen changes to update button
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event =>
+        document.addEventListener(event, updateFullscreenButtonState)
+    );
+    
+
     window.addEventListener('resize', () => {
         if (bookContent.length > 0) {
             if (overlayMobile) overlayMobile.classList.toggle('active', window.innerWidth < 768 && sideMenu.classList.contains('expanded'));
@@ -568,16 +631,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = Math.min(currentPage, totalPageSets > 0 ? totalPageSets - 1 : 0);
             renderPage(currentPage);
         }
+        updateFullscreenButtonState(); // Update on resize too as some browsers exit fs on resize
     });
 
     function init() {
         applySavedTheme(); applySavedJustification();
         listSavedBooks(); listRecentBooks(); fetchRepositoryBooks();
-        showLoadingScreenInterface();
+        showLoadingScreenInterface(); // This will call updateFullscreenButtonState
         clearSavedBooksButton.addEventListener('click', clearSavedBooks);
         clearRecentBooksButton.addEventListener('click', clearRecentBooks);
         if (bookSearchInput) bookSearchInput.addEventListener('input', filterRepositoryBooks);
         if (overlayMobile && window.innerWidth >= 768) overlayMobile.classList.remove('active');
+        updateFullscreenButtonState(); // Initial state
     }
 
     init();
