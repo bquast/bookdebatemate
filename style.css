@@ -1,32 +1,155 @@
-/* style.css */
-/* ... (all previous CSS from the last full script response) ... */
+/* Root variables for themes */
+:root {
+    --background-color: #f8f8f8;
+    --text-color: #333;
+    --page-background: #fff;
+    --page-border-color: #ddd;
+    --separator-color: #ccc;
+    --sidebar-background: #ececec;
+    --sidebar-width-collapsed: 60px;
+    --sidebar-width-expanded: 280px;
+}
+
+/* Dark theme */
+.dark-theme {
+    --background-color: #222;
+    --text-color: #eee;
+    --page-background: #333;
+    --page-border-color: #555;
+    --separator-color: #666;
+    --sidebar-background: #2a2a2a;
+}
+
+body {
+    margin: 0;
+    font-family: serif;
+    line-height: 1.6;
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding: 0;
+    box-sizing: border-box;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Side Menu Styles - Positioned on the RIGHT */
+#side-menu {
+    position: fixed;
+    top: 0;
+    right: 0; /* Changed from left to right */
+    height: 100%;
+    width: var(--sidebar-width-collapsed);
+    background-color: var(--sidebar-background);
+    color: var(--text-color);
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Shadow on the left side */
+    z-index: 1000;
+    box-sizing: border-box;
+    transition: width 0.3s ease-in-out, background-color 0.3s, color 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items in collapsed state */
+    overflow-x: hidden; /* Hide overflowing content when collapsed */
+    padding-top: 0;
+}
+
+#side-menu.expanded {
+    width: var(--sidebar-width-expanded);
+    align-items: flex-start; /* Align to start for expanded content */
+}
+
+#menu-toggle-container {
+    width: 100%;
+    display: flex;
+    justify-content: center; /* Center hamburger in collapsed */
+    padding: 10px 0;
+    box-sizing: border-box;
+    position: sticky; /* Keep hamburger at top when expanded content scrolls */
+    top: 0;
+    background-color: var(--sidebar-background); /* Match sidebar bg */
+    z-index: 1001; /* Above other sidebar content */
+}
+
+#side-menu.expanded #menu-toggle-container {
+    justify-content: flex-end; /* Align hamburger to right when expanded */
+    padding-right: 15px;
+}
+
+#menu-toggle {
+    font-size: 2em;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: color 0.3s;
+    line-height: 1;
+    position: relative; /* For tooltip */
+}
+
+.tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%; /* Position the tooltip */
+  left: 50%;
+  margin-left: -60px; /* Center the tooltip */
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.5em;
+}
+
+#menu-toggle:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
 
 #collapsed-sidebar-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* justify-content: flex-start; */ /* Remove this to allow spacing with margin-top: auto */
     width: 100%;
-    padding-top: 10px; /* Space below hamburger */
-    flex-grow: 1; 
-    padding-bottom: 10px; 
+    padding-top: 10px; /* Space below hamburger container */
+    flex-grow: 1; /* Allow it to take space, pushing buttons to bottom */
+    overflow: hidden; /* Prevent its own scrollbar */
+}
+
+#side-menu.expanded #collapsed-sidebar-content {
+    display: none; /* Hide when menu is expanded */
 }
 
 #collapsed-book-title {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg); /* Corrects orientation for vertical-rl on right sidebar */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: calc(100vh - 300px); /* Adjust based on other elements */
+    font-size: 0.9em;
     margin-top: 10px;
     margin-bottom: 15px;
-    max-height: calc(100vh - 280px); /* Adjusted to make space for buttons at bottom */
-    /* ... rest of its styles ... */
+    cursor: default;
 }
 
 #collapsed-progress {
+    font-size: 0.9em;
+    text-align: center;
+    white-space: pre-wrap;
+    line-height: 1.2;
     margin-bottom: 15px;
-    /* ... rest of its styles ... */
+}
+
+#simple-page-info {
+    display: block;
 }
 
 #ai-debater-button-collapsed {
-    margin-top: auto; /* Pushes this and subsequent items towards the bottom if flex-grow is on parent */
-    margin-bottom: 10px; /* Space between AI and Fullscreen button */
+    margin-top: auto; /* Pushes this and subsequent items towards the bottom */
+    margin-bottom: 10px;
 }
 
 #ai-debater-button-collapsed button,
@@ -37,7 +160,7 @@
     border-radius: 50%;
     width: 36px;
     height: 36px;
-    font-size: 1.2em; /* Adjust icon size as needed */
+    font-size: 1.2em;
     cursor: pointer;
     padding: 0;
     display: flex;
@@ -52,11 +175,40 @@
 }
 
 #fullscreen-button-collapsed {
-    margin-bottom: 5px; /* Space at the very bottom of collapsed sidebar */
+    margin-bottom: 5px;
+}
+
+#expanded-menu-content {
+    width: 100%;
+    padding-top: 0; /* Hamburger container handles its own padding */
+    overflow-y: auto; /* Allow scrolling for expanded content */
+    flex-grow: 1; /* Takes available space after hamburger */
+}
+
+#expanded-menu-content.hidden {
+    display: none;
+}
+
+#side-menu.expanded #expanded-menu-content {
+    display: block;
+}
+
+.menu-section {
+    margin-bottom: 20px;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+.menu-section:first-child { /* Add some top margin for first section in expanded view */
+    margin-top: 10px;
 }
 
 
-/* Button in expanded menu */
+.menu-section h4 { margin-top: 0; margin-bottom: 10px; }
+.menu-subsection h5 { margin-top: 0; margin-bottom: 5px; font-size: 1em; }
+.menu-section label { display: block; margin-bottom: 5px; cursor: pointer; }
+#progress-section-expanded #menu-page-info { font-weight: bold; }
+
+/* Button in expanded menu for fullscreen */
 .menu-subsection #fullscreen-button-expanded {
     padding: 6px 12px;
     background-color: var(--sidebar-background);
@@ -72,17 +224,180 @@
     border-color: var(--text-color);
 }
 
+/* Book Container and Pages */
+#book-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    gap: 20px;
+    overflow: hidden;
+    box-sizing: border-box;
+    position: relative;
+    margin-right: var(--sidebar-width-collapsed); /* Adjusted for RIGHT sidebar */
+    transition: margin-right 0.3s ease-in-out;
+}
 
-/* Ensure fullscreen buttons are visible when book loaded */
-body.book-loaded #fullscreen-button-collapsed,
-body.book-loaded #fullscreen-button-expanded {
-    display: block; /* or flex for the collapsed button's parent */
-}
-body.book-loaded #fullscreen-button-collapsed { /* Ensure its parent div is block too */
-    display: block;
+body.menu-expanded #book-container {
+    margin-right: var(--sidebar-width-expanded); /* Adjusted for RIGHT sidebar */
 }
 
-/* Update visibility for AI button too if not already done */
-body.book-loaded #ai-debater-button-collapsed {
-    display: block; 
+.page {
+    background-color: var(--page-background);
+    padding: 20px;
+    overflow-y: hidden;
+    box-sizing: border-box;
+    max-width: 100%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+.page::-webkit-scrollbar { display: none; }
+.text-justify .page p { text-align: justify; }
+
+.page h1, .page h2, .page h3, .page .section-number { margin-top: 2.5em; margin-bottom: 0.5em; padding: 0; }
+.page p, .page hr, .page em { margin-top: 0; margin-bottom: 1em; padding: 0; }
+.page h1 { font-size: 2em; text-align: center; }
+.page h2 { font-size: 1.5em; text-align: center; }
+.page h3 { font-size: 1.2em; text-align: center; }
+.page .section-number { display: block; text-align: center; font-size: 1.1em; font-weight: bold; }
+.page hr { border: none; border-top: 1px solid var(--separator-color); margin: 1em auto; width: 50%; }
+.page em { font-style: italic; display: block; }
+#page-right { display: none; } /* Hidden by default on mobile/single page view */
+
+/* Loading Area Styles */
+#loading-area {
+    text-align: center; padding: 20px; border: 1px solid var(--page-border-color);
+    background-color: var(--page-background); color: var(--text-color); max-width: 600px;
+    margin: 50px auto; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    position: relative; z-index: 1;
+}
+.load-option { margin-bottom: 20px; border-bottom: 1px dashed var(--separator-color); padding-bottom: 20px; }
+.load-option:last-child { border-bottom: none; padding-bottom: 0; }
+.load-option h3 { margin-top: 0; }
+#book-search, #url-input {
+    padding: 8px; box-sizing: border-box; background-color: var(--background-color);
+    color: var(--text-color); border: 1px solid var(--page-border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+#book-search { width: calc(100% - 18px); margin-bottom: 10px; }
+#url-input { margin-right: 5px; width: calc(60% - 18px); }
+#repository-books-list, #recent-books-list, #saved-books-list {
+    list-style: none; padding: 0; margin: 10px 0; max-height: 200px; overflow-y: auto;
+    border: 1px solid var(--page-border-color); background-color: var(--background-color); text-align: left;
+}
+#repository-books-list li, #recent-books-list li, #saved-books-list li {
+    padding: 8px; border-bottom: 1px solid var(--page-border-color); cursor: pointer;
+    transition: background-color 0.2s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#repository-books-list li:last-child, #recent-books-list li:last-child, #saved-books-list li:last-child { border-bottom: none; }
+#repository-books-list li:hover, #recent-books-list li:hover, #saved-books-list li:hover { background-color: var(--separator-color); }
+#load-url, #clear-recent-books, #clear-saved-books {
+    padding: 8px 15px; cursor: pointer; background-color: var(--sidebar-background);
+    color: var(--text-color); border: 1px solid var(--page-border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+#clear-recent-books, #clear-saved-books { margin-top: 10px; padding: 5px 10px; }
+#loading-status { color: var(--text-color); font-style: italic; transition: color 0.3s; }
+
+/* Visibility based on book loaded state */
+body.book-loaded #loading-area { display: none; }
+body.book-loaded #book-container { display: flex !important; }
+body.book-loaded #side-menu { display: flex !important; }
+body.book-loaded #collapsed-sidebar-content { display: flex; }
+body.book-loaded #collapsed-book-title { display: block; }
+body.book-loaded #collapsed-progress { display: block; }
+body.book-loaded #ai-debater-button-collapsed { display: block; }
+body.book-loaded #fullscreen-button-collapsed { display: block; }
+
+
+/* Desktop view: Two pages side-by-side */
+@media (min-width: 768px) {
+    #book-container { flex-direction: row; }
+    .page { flex-basis: 48%; max-height: calc(100vh - 40px); border: none; box-shadow: none; }
+    #page-right { display: block; }
+    #book-container::after { /* Vertical separator line */
+        content: ''; position: absolute; top: 20px; bottom: 20px; left: 50%;
+        width: 1px; background-color: var(--separator-color);
+        transform: translateX(-50%); transition: background-color 0.3s;
+    }
+}
+
+/* Mobile Overlay for Menu */
+#overlay-mobile {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); z-index: 999; /* Below sidebar */
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    display: none; /* Only active on mobile when menu open */
+}
+#overlay-mobile.active { display: block; opacity: 1; visibility: visible; }
+
+
+/* System Theme - Dark mode preference */
+@media (prefers-color-scheme: dark) {
+    body.system-theme:not(.light-theme) {
+        --background-color: #222; --text-color: #eee;
+        --page-background: #333; --page-border-color: #555;
+        --separator-color: #666; --sidebar-background: #2a2a2a;
+    }
+}
+
+/* Responsive adjustments for smaller screens (Mobile) */
+@media (max-width: 767px) {
+    .page { max-height: calc(100vh - 40px); }
+    #side-menu { /* Sidebar overlays from right on mobile */
+        right: calc(-1 * var(--sidebar-width-expanded));
+        width: var(--sidebar-width-expanded);
+        transition: right 0.3s ease-in-out;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+    }
+    #side-menu.expanded { right: 0; }
+    #collapsed-sidebar-content { display: none !important; }
+    #book-container { margin-right: 0 !important; }
+
+    /* Mobile menu toggle button - fixed top right */
+    #menu-toggle-container {
+        position: fixed; top: 0px; right: 0px;
+        width: auto; /* Adjust to content */
+        padding: 10px 15px; /* Clickable area */
+        z-index: 1001; /* Above sidebar when it slides in */
+        background-color: var(--sidebar-background);
+        border-bottom-left-radius: 5px;
+    }
+     #side-menu.expanded #menu-toggle-container {
+        /* When menu is open on mobile, hamburger stays in this fixed spot */
+        justify-content: center; padding-right: 15px; /* Re-center or align as preferred */
+    }
+}
+
+/* AI Debater Chat Window Styles */
+#ai-debater-section { border-top: 1px solid var(--separator-color); padding-top: 15px; }
+#ai-chat-window {
+    display: flex; flex-direction: column; height: 300px;
+    max-height: calc(100vh - 400px); /* Adjust based on other menu items */
+    border: 1px solid var(--page-border-color); border-radius: 4px; overflow: hidden;
+}
+#ai-chat-messages {
+    flex-grow: 1; overflow-y: auto; padding: 10px;
+    background-color: var(--background-color);
+}
+.chat-message { margin-bottom: 10px; padding: 8px; border-radius: 4px; line-height: 1.4; max-width: 90%; }
+.chat-message.user { background-color: var(--separator-color); margin-left: auto; text-align: right; }
+.chat-message.ai { background-color: var(--page-background); border: 1px solid var(--page-border-color); margin-right: auto; }
+#ai-chat-input-area {
+    display: flex; padding: 10px; border-top: 1px solid var(--page-border-color);
+    background-color: var(--sidebar-background);
+}
+#ai-user-input {
+    flex-grow: 1; padding: 8px; border: 1px solid var(--page-border-color);
+    border-radius: 4px; resize: none; margin-right: 8px; min-height: 40px;
+    font-family: inherit; font-size: 0.9em;
+    background-color: var(--background-color); color: var(--text-color);
+}
+#ai-send-button {
+    padding: 8px 15px; border: none; background-color: var(--text-color);
+    color: var(--sidebar-background); border-radius: 4px; cursor: pointer;
+    transition: opacity 0.2s;
+}
+#ai-send-button:hover { opacity: 0.8; }
