@@ -292,3 +292,36 @@ body.book-loaded #highlight-button-collapsed {display: block; } /* Show highligh
     transition: opacity 0.2s;
 }
 #ai-send-button:hover { opacity: 0.8; }
+
+/* Styles for collapsible Settings section */
+#settings-toggle {
+    display: flex;
+    justify-content: space-between; /* Aligns arrow to the right */
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 10px; /* Add some space if settings are open */
+}
+
+#settings-arrow {
+    margin-left: 8px; /* Space for the arrow */
+    font-size: 0.8em; /* Adjust arrow size if needed */
+    transition: transform 0.2s ease-in-out; /* For rotation if you choose that method */
+}
+
+/* Ensure .hidden class is effective */
+.collapsible-content.hidden {
+    display: none;
+}
+/* If you already have a global .hidden { display: none !important; }, that's fine too. */
+/* This is an alternative if you don't want/need !important here */
+#expanded-menu-content .hidden { 
+    display: none;
+}
+
+/* Ensure menu sections have some padding if they are directly one after another */
+.menu-section:not(:last-child) {
+    margin-bottom: 15px; 
+}
+#collapsible-settings-content .menu-subsection:not(:last-child) {
+    margin-bottom: 10px;
+}

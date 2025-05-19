@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const sideMenu = document.getElementById('side-menu');
     const menuToggle = document.getElementById('menu-toggle');
     const expandedMenuContent = document.getElementById('expanded-menu-content');
+    const settingsToggle = document.getElementById('settings-toggle'); // New
+    const collapsibleSettingsContent = document.getElementById('collapsible-settings-content'); // New
+    const settingsArrow = document.getElementById('settings-arrow'); // New
+
 
     // Collapsed Sidebar Specific Content
     const collapsedSidebarContent = document.getElementById('collapsed-sidebar-content');
@@ -127,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function listSavedBooks() {
+        if (!savedBooksList) return;
         savedBooksList.innerHTML = ''; const books = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -143,10 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.addEventListener('click', () => loadBookFromLocalStorage(book.key.replace(localStorageBookPrefix, '')));
                 savedBooksList.appendChild(li);
             });
-            clearSavedBooksButton.style.display = 'block'; savedBooksSection.style.display = 'block';
+            if (clearSavedBooksButton) clearSavedBooksButton.style.display = 'block';
+            if (savedBooksSection) savedBooksSection.style.display = 'block';
         } else {
             savedBooksList.innerHTML = '<li>No locally saved books found.</li>';
-            clearSavedBooksButton.style.display = 'none'; savedBooksSection.style.display = 'none';
+            if (clearSavedBooksButton) clearSavedBooksButton.style.display = 'none';
+            if (savedBooksSection) savedBooksSection.style.display = 'none';
         }
     }
 
@@ -176,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getRecentBooks() { return JSON.parse(localStorage.getItem('recentBooks') || '[]'); }
 
     function listRecentBooks() {
+        if (!recentBooksList) return;
         recentBooksList.innerHTML = ''; const recentBooks = getRecentBooks();
         if (recentBooks.length > 0) {
             recentBooks.forEach(book => {
@@ -184,9 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.addEventListener('click', () => book.url ? loadBookFromURL(book.url, book.title) : loadBookFromLocalStorage(book.title));
                 recentBooksList.appendChild(li);
             });
-            clearRecentBooksButton.style.display = 'block';
+            if (clearRecentBooksButton) clearRecentBooksButton.style.display = 'block';
         } else {
-            recentBooksList.innerHTML = '<li>No recent files.</li>'; clearRecentBooksButton.style.display = 'none';
+            recentBooksList.innerHTML = '<li>No recent files.</li>';
+            if (clearRecentBooksButton) clearRecentBooksButton.style.display = 'none';
         }
     }
 
@@ -211,12 +220,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setJustifyText(justify) {
+        if (!bookContainer) return;
         bookContainer.classList.toggle('text-justify', justify);
         localStorage.setItem('justifyText', justify);
         if (bookContent.length > 0) { pages = paginateContent(bookContent); renderPage(currentPage); }
     }
 
     function applySavedJustification() {
+        if (!justifyTextCheckbox) return;
         const savedJustify = localStorage.getItem('justifyText') === 'true';
         justifyTextCheckbox.checked = savedJustify;
         setJustifyText(savedJustify);
@@ -258,34 +269,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Pagination ---
     function paginateContent(content) {
-        if (!content || content.length === 0) return [];
+        if (!content || content.length === 0 || !pageLeft) return []; // Added !pageLeft check
         const bookPages = []; let currentPageContent = []; let currentPageHeight = 0;
         const isDesktop = window.innerWidth >= 768;
         const pagePadding = 20; const bookContainerPadding = 20;
         const sidebarCurrentWidth = isDesktop ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue(sideMenu.classList.contains('expanded') ? '--sidebar-width-expanded' : '--sidebar-width-collapsed')) : 0;
         const availableWidthForBook = window.innerWidth - sidebarCurrentWidth;
-        const pageHeight = window.innerHeight - (bookContainerPadding * 2);
-        const pageWidth = (availableWidthForBook / (isDesktop ? 2 : 1)) - (pagePadding * 2) - (isDesktop ? 10 : 0);
+        const pageHeight = window.innerHeight - (bookContainerPadding * 2); // Nominal height for estimation
+        let effectivePageWidth = (availableWidthForBook / (isDesktop ? 2 : 1)) - (pagePadding * 2) - (isDesktop ? 10 : 0);
+        if (effectivePageWidth <=0) effectivePageWidth = 300; // Fallback if calculation is off (e.g. sidebar not measured yet)
+
 
         function estimateHeight(elementHTML) {
             const tempDiv = document.createElement('div');
-            Object.assign(tempDiv.style, { position: 'absolute', visibility: 'hidden', width: pageWidth + 'px', fontSize: '1rem', lineHeight: '1.6', fontFamily: 'serif', padding: '0', margin: '0' });
+            Object.assign(tempDiv.style, { 
+                position: 'absolute', 
+                visibility: 'hidden', 
+                width: effectivePageWidth + 'px', 
+                fontSize: getComputedStyle(pageLeft).fontSize || '1rem', // Use actual page font size
+                lineHeight: getComputedStyle(pageLeft).lineHeight || '1.6', // Use actual page line height
+                fontFamily: getComputedStyle(pageLeft).fontFamily || 'serif', // Use actual page font family
+                padding: '0', 
+                margin: '0',
+                boxSizing: 'border-box'
+            });
+            // Apply specific margins from CSS more accurately if possible, or keep general heuristic
             if (elementHTML.startsWith('<h1')) { tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '0.5em'; }
             else if (elementHTML.startsWith('<h2') || elementHTML.startsWith('<h3')) { tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '0.5em'; }
             else if (elementHTML.startsWith('<span class="section-number">')) { tempDiv.style.marginTop = '2.5em'; tempDiv.style.marginBottom = '1em'; }
             else if (elementHTML.startsWith('<p>') || elementHTML.startsWith('<em>')) { tempDiv.style.marginTop = '0'; tempDiv.style.marginBottom = '1em'; }
             else if (elementHTML === '<hr>') { tempDiv.style.marginTop = '1em'; tempDiv.style.marginBottom = '1em'; }
-            if (justifyTextCheckbox.checked && elementHTML.startsWith('<p>')) tempDiv.style.textAlign = 'justify';
-            tempDiv.innerHTML = elementHTML; document.body.appendChild(tempDiv);
-            const height = tempDiv.getBoundingClientRect().height; document.body.removeChild(tempDiv);
-            return height + 1;
+            
+            if (justifyTextCheckbox && justifyTextCheckbox.checked && elementHTML.startsWith('<p>')) tempDiv.style.textAlign = 'justify';
+            
+            tempDiv.innerHTML = elementHTML; 
+            document.body.appendChild(tempDiv);
+            const height = tempDiv.getBoundingClientRect().height; 
+            document.body.removeChild(tempDiv);
+            return height + 1; // Add a small buffer
         }
+
         for (const block of content) {
             const blockHeight = estimateHeight(block);
-            if (currentPageHeight + blockHeight > pageHeight + 1 && currentPageContent.length > 0) {
-                bookPages.push(currentPageContent); currentPageContent = [block]; currentPageHeight = blockHeight;
+            if (currentPageHeight + blockHeight > pageHeight + 1 && currentPageContent.length > 0) { // +1 buffer for rounding
+                bookPages.push(currentPageContent); 
+                currentPageContent = [block]; 
+                currentPageHeight = blockHeight;
             } else {
-                currentPageContent.push(block); currentPageHeight += blockHeight;
+                currentPageContent.push(block); 
+                currentPageHeight += blockHeight;
             }
         }
         if (currentPageContent.length > 0) bookPages.push(currentPageContent);
@@ -296,34 +328,51 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderPage(pageIndex) {
         const isDesktop = window.innerWidth >= 768;
         const totalBookPages = pages.length;
+        let currentSimpleProgressPage = 0;
 
-        if (totalBookPages > 0) {
-            const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
-            const displayPageEnd = isDesktop ? Math.min((pageIndex * 2) + 2, totalBookPages) : pageIndex + 1;
-            const progressTextExpanded = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${totalBookPages}`;
-            menuPageInfo.textContent = progressTextExpanded;
-            progressSectionExpanded.style.display = 'block';
-            const currentSimpleProgressPage = isDesktop ? displayPageStart : displayPageStart;
-            simplePageInfo.innerHTML = `${currentSimpleProgressPage}<br>---<br>${totalBookPages}`;
-            verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title";
-            collapsedBookTitleDiv.style.display = 'block';
-            collapsedProgressDiv.style.display = 'block';
-        } else {
-            menuPageInfo.textContent = "Page 0 of 0"; progressSectionExpanded.style.display = 'none';
-            simplePageInfo.innerHTML = "0<br>---<br>0";
-            verticalBookTitleText.textContent = "";
-            collapsedBookTitleDiv.style.display = 'none'; collapsedProgressDiv.style.display = 'none';
+
+        if (menuPageInfo && progressSectionExpanded && simplePageInfo && verticalBookTitleText && collapsedBookTitleDiv && collapsedProgressDiv) {
+            if (totalBookPages > 0) {
+                const displayPageStart = isDesktop ? (pageIndex * 2) + 1 : pageIndex + 1;
+                const displayPageEnd = isDesktop ? Math.min((pageIndex * 2) + 2, totalBookPages) : pageIndex + 1;
+                const progressTextExpandedContent = `Page ${displayPageStart}${isDesktop && displayPageEnd > displayPageStart ? '-' + displayPageEnd : ''} of ${totalBookPages}`;
+                menuPageInfo.textContent = progressTextExpandedContent;
+                
+                // Visibility of progressSectionExpanded is now primarily handled by toggleMenu
+                if (!sideMenu.classList.contains('expanded')) {
+                    progressSectionExpanded.style.display = 'block';
+                } else {
+                    progressSectionExpanded.style.display = 'none';
+                }
+
+                currentSimpleProgressPage = isDesktop ? displayPageStart : displayPageStart;
+                simplePageInfo.innerHTML = `${currentSimpleProgressPage}<br>---<br>${totalBookPages}`;
+                verticalBookTitleText.textContent = currentlyLoadedBookTitle || "Book Title";
+                collapsedBookTitleDiv.style.display = 'block';
+                collapsedProgressDiv.style.display = 'block';
+            } else {
+                menuPageInfo.textContent = "Page 0 of 0"; 
+                progressSectionExpanded.style.display = 'none';
+                simplePageInfo.innerHTML = "0<br>---<br>0";
+                verticalBookTitleText.textContent = "";
+                collapsedBookTitleDiv.style.display = 'none'; 
+                collapsedProgressDiv.style.display = 'none';
+            }
         }
 
-        pageLeft.innerHTML = ''; pageRight.innerHTML = '';
+
+        if (pageLeft) pageLeft.innerHTML = '';
+        if (pageRight) pageRight.innerHTML = '';
+
         if (isDesktop) {
             const leftIdx = pageIndex * 2, rightIdx = pageIndex * 2 + 1;
-            if (pages[leftIdx]) pageLeft.innerHTML = pages[leftIdx].join(''); else pageLeft.innerHTML = '';
-            if (pages[rightIdx]) pageRight.innerHTML = pages[rightIdx].join(''); else pageRight.innerHTML = '';
+            if (pages[leftIdx] && pageLeft) pageLeft.innerHTML = pages[leftIdx].join('');
+            if (pages[rightIdx] && pageRight) pageRight.innerHTML = pages[rightIdx].join('');
         } else {
-            if (pages[pageIndex]) pageLeft.innerHTML = pages[pageIndex].join(''); else pageLeft.innerHTML = '';
+            if (pages[pageIndex] && pageLeft) pageLeft.innerHTML = pages[pageIndex].join('');
         }
-        pageLeft.scrollTop = 0; pageRight.scrollTop = 0;
+        if (pageLeft) pageLeft.scrollTop = 0;
+        if (pageRight) pageRight.scrollTop = 0;
 
         if (bookContent.length > 0 && currentlyLoadedBookTitle && localStorage.getItem(localStorageBookPrefix + currentlyLoadedBookTitle)) {
             try {
@@ -358,33 +407,47 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (expandedMenuContent) expandedMenuContent.classList.toggle('hidden', !expand);
         
-        // On mobile, collapsed sidebar content is always hidden by CSS `display: none !important;`
-        // On desktop, we toggle its display directly.
         if (isDesktop && collapsedSidebarContent) {
             collapsedSidebarContent.style.display = expand ? 'none' : 'flex';
         }
 
-
         if (!isDesktop) {
             if (overlayMobile) overlayMobile.classList.toggle('active', expand);
         }
+
+        // Hide progress section when menu is expanded
+        if (progressSectionExpanded) {
+            if (expand) {
+                progressSectionExpanded.style.display = 'none';
+            }
+            // When collapsing, the subsequent renderPage call will handle its visibility if a book is loaded.
+        }
         
-        if (expand && aiDebaterSection && aiDebaterButtonCollapsed && document.activeElement === aiDebaterButtonCollapsed.querySelector('button')) {
-            aiDebaterSection.style.display = 'block';
+        const openingAIDebater = expand && aiDebaterButtonCollapsed && document.activeElement && aiDebaterButtonCollapsed.contains(document.activeElement);
+
+        if (openingAIDebater) {
+            if (aiDebaterSection) aiDebaterSection.style.display = 'block';
+            // Ensure settings are collapsed for max AI debater space
+            if (collapsibleSettingsContent && !collapsibleSettingsContent.classList.contains('hidden') && settingsArrow) {
+                 collapsibleSettingsContent.classList.add('hidden');
+                 settingsArrow.textContent = '►'; // Set arrow to collapsed state
+            }
             if (aiUserInput) aiUserInput.focus();
         }
         
         if (bookContent.length > 0) {
             pages = paginateContent(bookContent);
-            renderPage(currentPage);
+            renderPage(currentPage); 
         }
     }
 
 
     // --- UI State Management ---
     function showLoadingScreenInterface() {
-        loadingArea.style.display = 'block'; bookContainer.style.display = 'none';
-        sideMenu.style.display = 'none'; document.body.classList.remove('book-loaded', 'menu-expanded');
+        if (loadingArea) loadingArea.style.display = 'block';
+        if (bookContainer) bookContainer.style.display = 'none';
+        if (sideMenu) sideMenu.style.display = 'none';
+        document.body.classList.remove('book-loaded', 'menu-expanded');
         currentlyLoadedBookTitle = null;
         listSavedBooks(); listRecentBooks();
         if(collapsedBookTitleDiv) collapsedBookTitleDiv.style.display = 'none';
@@ -400,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Book Loading ---
     async function loadBookFromURL(url, title, initialPage = 0) {
-        loadingStatus.textContent = `Loading: ${title}...`;
+        if (loadingStatus) loadingStatus.textContent = `Loading: ${title}...`;
         try {
             let markdownText;
             const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
@@ -420,13 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
             addRecentBook({ title: title, url: url });
         } catch (error) {
             console.error("Error loading book from URL:", error);
-            loadingStatus.textContent = `Error: ${error.message}`;
+            if (loadingStatus) loadingStatus.textContent = `Error: ${error.message}`;
             showLoadingScreenInterface();
         }
     }
     
     function loadContent(markdownText, initialPage = 0, title = 'Untitled Book', isTxtSource = false) {
-        loadingStatus.textContent = 'Parsing content...';
+        if (loadingStatus) loadingStatus.textContent = 'Parsing content...';
         let tempBookContent = parseMarkdown(markdownText);
         
         let hasH1 = tempBookContent.slice(0, 3).some(block => block.toLowerCase().startsWith('<h1>'));
@@ -437,50 +500,64 @@ document.addEventListener('DOMContentLoaded', () => {
         
         bookContent = tempBookContent;
         currentlyLoadedBookTitle = title;
-        loadingStatus.textContent = 'Paginating content...'; pages = paginateContent(bookContent);
+        if (loadingStatus) loadingStatus.textContent = 'Paginating content...';
+        pages = paginateContent(bookContent);
 
         if (pages.length > 0) {
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
             currentPage = Math.min(initialPage, totalPageSets > 0 ? totalPageSets - 1 : 0);
             renderPage(currentPage);
-            loadingArea.style.display = 'none'; bookContainer.style.display = 'flex';
-            sideMenu.style.display = 'flex'; document.body.classList.add('book-loaded');
+            if (loadingArea) loadingArea.style.display = 'none';
+            if (bookContainer) bookContainer.style.display = 'flex';
+            if (sideMenu) sideMenu.style.display = 'flex';
+            document.body.classList.add('book-loaded');
             if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'block';
             if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'block';
             if (highlightButtonCollapsed) highlightButtonCollapsed.style.display = 'block';
-            loadingStatus.textContent = '';
-            if (sideMenu.classList.contains('expanded')) toggleMenu(false);
+            if (loadingStatus) loadingStatus.textContent = '';
+            if (sideMenu && sideMenu.classList.contains('expanded')) toggleMenu(false); // Collapse menu on new book load
+             // Ensure settings are collapsed and arrow is correct when a new book loads and menu might be briefly visible
+            if (collapsibleSettingsContent && settingsArrow) {
+                collapsibleSettingsContent.classList.add('hidden');
+                settingsArrow.textContent = '►';
+            }
         } else {
-            loadingStatus.textContent = 'Could not process content or book empty.';
+            if (loadingStatus) loadingStatus.textContent = 'Could not process content or book empty.';
             showLoadingScreenInterface();
         }
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
         if(aiStatus) aiStatus.textContent = '';
-        if(aiDebaterSection) aiDebaterSection.style.display = 'none';
+        if(aiDebaterSection) aiDebaterSection.style.display = 'none'; // Keep AI debater hidden initially
         updateFullscreenButtonState();
     }
 
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0]; if (!file) return;
-        loadingStatus.textContent = `Loading file: ${file.name}...`;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const title = file.name.replace(/\.(md|txt)$/i, '');
-            const isTxtSource = file.name.toLowerCase().endsWith('.txt');
-            loadContent(e.target.result, 0, title, isTxtSource);
-            addRecentBook({ title: title, url: null });
-        };
-        reader.onerror = () => loadingStatus.textContent = 'Error loading file.';
-        reader.readAsText(file);
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0]; if (!file) return;
+            if (loadingStatus) loadingStatus.textContent = `Loading file: ${file.name}...`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const title = file.name.replace(/\.(md|txt)$/i, '');
+                const isTxtSource = file.name.toLowerCase().endsWith('.txt');
+                loadContent(e.target.result, 0, title, isTxtSource);
+                addRecentBook({ title: title, url: null });
+            };
+            reader.onerror = () => { if (loadingStatus) loadingStatus.textContent = 'Error loading file.'; };
+            reader.readAsText(file);
+        });
+    }
 
-    loadUrlButton.addEventListener('click', () => {
-        const url = urlInput.value.trim(); if (!url) { loadingStatus.textContent = 'Please enter a URL.'; return; }
-        const placeholderTitle = url.substring(url.lastIndexOf('/') + 1).replace(/\.(md|txt|markdown)$/i, '') || 'Book from URL';
-        loadBookFromURL(url, placeholderTitle);
-    });
+    if (loadUrlButton) {
+        loadUrlButton.addEventListener('click', () => {
+            if (!urlInput) return;
+            const url = urlInput.value.trim(); if (!url) { if (loadingStatus) loadingStatus.textContent = 'Please enter a URL.'; return; }
+            const placeholderTitle = url.substring(url.lastIndexOf('/') + 1).replace(/\.(md|txt|markdown)$/i, '') || 'Book from URL';
+            loadBookFromURL(url, placeholderTitle);
+        });
+    }
+
 
     async function fetchRepositoryBooks() {
         try {
@@ -490,14 +567,17 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRepositoryBooks(allRepositoryBooks);
         } catch (error) {
             console.error("Repo fetch error:", error);
-            const repoTitleEl = Array.from(loadingArea.querySelectorAll('.load-option h3')).find(h3 => h3.textContent.includes("Load from Repository"));
-            if (repoTitleEl) repoTitleEl.textContent = 'Repository books not available.';
+            if (loadingArea) {
+                const repoTitleEl = Array.from(loadingArea.querySelectorAll('.load-option h3')).find(h3 => h3.textContent.includes("Load from Repository"));
+                if (repoTitleEl) repoTitleEl.textContent = 'Repository books not available.';
+            }
             if (bookSearchInput) bookSearchInput.style.display = 'none';
             if (repositoryBooksList) repositoryBooksList.style.display = 'none';
         }
     }
 
     function renderRepositoryBooks(booksToRender) {
+        if (!repositoryBooksList) return;
         repositoryBooksList.innerHTML = '';
         if (booksToRender.length > 0) {
             booksToRender.forEach(book => {
@@ -513,6 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function filterRepositoryBooks() {
+        if (!bookSearchInput) return;
         const searchTerm = bookSearchInput.value.toLowerCase();
         const filteredBooks = allRepositoryBooks.filter(book => 
             book.title.toLowerCase().includes(searchTerm) || 
@@ -550,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!aiChatMessages) return;
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('chat-message', sender);
-        messageDiv.textContent = text; // Using textContent to prevent XSS
+        messageDiv.textContent = text; 
         aiChatMessages.appendChild(messageDiv);
         aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
     }
@@ -604,9 +685,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (aiDebaterButtonCollapsed) {
         aiDebaterButtonCollapsed.addEventListener('click', () => {
-            if (!sideMenu.classList.contains('expanded')) toggleMenu(true);
+            if (sideMenu && !sideMenu.classList.contains('expanded')) {
+                 // Pass true to toggleMenu to force expansion and trigger specific AI debater UI setup
+                toggleMenu(true);
+            }
             if (aiDebaterSection) aiDebaterSection.style.display = 'block';
-            if (conversationHistory.length === 0 && bookContent.length > 0 && aiChatMessages.children.length === 0) {
+
+            // If settings are open, close them to maximize space for AI Debater
+            if (collapsibleSettingsContent && !collapsibleSettingsContent.classList.contains('hidden') && settingsArrow) {
+                collapsibleSettingsContent.classList.add('hidden');
+                settingsArrow.textContent = '►';
+            }
+
+            if (conversationHistory.length === 0 && bookContent.length > 0 && aiChatMessages && aiChatMessages.children.length === 0) {
                 const selected = getSelectedTextOnPage();
                 addMessageToChat(selected ? `Let's discuss your selection: "${selected.substring(0,50)}..." What are your thoughts?` : "What aspect of the current page(s) would you like to debate or understand better?", 'ai');
             }
@@ -629,27 +720,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners & Init ---
     document.addEventListener('keydown', (event) => {
-        const isMenuExpanded = sideMenu.classList.contains('expanded');
+        const isMenuExpanded = sideMenu && sideMenu.classList.contains('expanded');
         if (event.key === 'Escape') {
             if (isFullscreen()) { exitFullscreen(); event.preventDefault(); }
             else if (isMenuExpanded) { toggleMenu(false); event.preventDefault(); }
         } else if (bookContent.length > 0 && (!isMenuExpanded || window.innerWidth < 768)) {
+             // Check if the active element is not an input/textarea before page navigation
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                return; 
+            }
             if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') { nextPage(); event.preventDefault(); }
             else if (event.key === 'ArrowLeft') { prevPage(); event.preventDefault(); }
         }
     });
-    themeRadios.forEach(radio => radio.addEventListener('change', (e) => setTheme(e.target.value)));
-    justifyTextCheckbox.addEventListener('change', (e) => setJustifyText(e.target.checked));
+
+    if (themeRadios) themeRadios.forEach(radio => radio.addEventListener('change', (e) => setTheme(e.target.value)));
+    if (justifyTextCheckbox) justifyTextCheckbox.addEventListener('change', (e) => setJustifyText(e.target.checked));
+    
     if (fullscreenButtonCollapsed?.querySelector('button')) {
       fullscreenButtonCollapsed.querySelector('button').addEventListener('click', toggleFullscreen);
     }
     if (fullscreenButtonExpanded) fullscreenButtonExpanded.addEventListener('click', toggleFullscreen);
+    
     ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event =>
         document.addEventListener(event, updateFullscreenButtonState)
     );
+
     window.addEventListener('resize', () => {
         if (bookContent.length > 0) {
-            if (overlayMobile) overlayMobile.classList.toggle('active', window.innerWidth < 768 && sideMenu.classList.contains('expanded'));
+            if (overlayMobile && sideMenu) overlayMobile.classList.toggle('active', window.innerWidth < 768 && sideMenu.classList.contains('expanded'));
             pages = paginateContent(bookContent);
             const isDesktop = window.innerWidth >= 768;
             const totalPageSets = isDesktop ? Math.ceil(pages.length / 2) : pages.length;
@@ -667,21 +767,27 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchRepositoryBooks();
         showLoadingScreenInterface(); 
         
-        clearSavedBooksButton.addEventListener('click', clearSavedBooks);
-        clearRecentBooksButton.addEventListener('click', clearRecentBooks);
+        if (clearSavedBooksButton) clearSavedBooksButton.addEventListener('click', clearSavedBooks);
+        if (clearRecentBooksButton) clearRecentBooksButton.addEventListener('click', clearRecentBooks);
         if (bookSearchInput) bookSearchInput.addEventListener('input', filterRepositoryBooks);
         
-        // MODIFICATION: Added event listeners for menu toggle and overlay
         if (menuToggle) {
             menuToggle.addEventListener('click', () => toggleMenu());
         }
         if (overlayMobile) {
-            overlayMobile.addEventListener('click', () => toggleMenu(false)); // Close menu on overlay click
+            overlayMobile.addEventListener('click', () => toggleMenu(false));
         }
-        // END MODIFICATION
+
+        // Collapsible settings listener
+        if (settingsToggle && collapsibleSettingsContent && settingsArrow) {
+            settingsToggle.addEventListener('click', () => {
+                const isHidden = collapsibleSettingsContent.classList.contains('hidden');
+                collapsibleSettingsContent.classList.toggle('hidden');
+                settingsArrow.textContent = isHidden ? '▼' : '►';
+            });
+        }
 
         if (overlayMobile && window.innerWidth >= 768) overlayMobile.classList.remove('active');
-        // updateFullscreenButtonState(); // Called by showLoadingScreenInterface which calls it.
     }
 
     init();

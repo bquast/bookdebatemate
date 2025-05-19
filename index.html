@@ -73,20 +73,21 @@
         </div>
         <div id="expanded-menu-content" class="hidden">
             <div class="menu-section">
-                <h4>Settings</h4>
-                <div class="menu-subsection">
-                     <h5>Appearance</h5>
-                     <label><input type="radio" name="theme" value="light"> Light</label><br>
-                     <label><input type="radio" name="theme" value="dark"> Dark</label><br>
-                     <label><input type="radio" name="theme" value="system" checked> System</label>
-                </div>
-                <div class="menu-subsection">
-                    <h5>Text</h5>
-                    <label><input type="checkbox" id="justify-text"> Justify Paragraphs</label>
-                </div>
-                <div class="menu-subsection">
-                    <h5>View</h5>
-                    <button id="fullscreen-button-expanded">Toggle Fullscreen</button>
+                <h4 id="settings-toggle">Settings <span id="settings-arrow">►</span></h4>
+                <div id="collapsible-settings-content" class="hidden"> <div class="menu-subsection">
+                         <h5>Appearance</h5>
+                         <label><input type="radio" name="theme" value="light"> Light</label><br>
+                         <label><input type="radio" name="theme" value="dark"> Dark</label><br>
+                         <label><input type="radio" name="theme" value="system" checked> System</label>
+                    </div>
+                    <div class="menu-subsection">
+                        <h5>Text</h5>
+                        <label><input type="checkbox" id="justify-text"> Justify Paragraphs</label>
+                    </div>
+                    <div class="menu-subsection">
+                        <h5>View</h5>
+                        <button id="fullscreen-button-expanded">Toggle Fullscreen</button>
+                    </div>
                 </div>
             </div>
             <div class="menu-section" id="progress-section-expanded" style="display: none;">
