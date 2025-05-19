@@ -7,7 +7,7 @@
     --separator-color: #ccc;
     --sidebar-background: #ececec;
     --sidebar-width-collapsed: 60px;
-    --sidebar-width-expanded: 280px;
+    --sidebar-width-expanded: 560px; /* MODIFIED: Was 280px */
 }
 
 /* Dark theme */
@@ -18,6 +18,7 @@
     --page-border-color: #555;
     --separator-color: #666;
     --sidebar-background: #2a2a2a;
+    /* Sidebar width expanded will be inherited from :root, no need to repeat unless specifically different for dark theme */
 }
 
 body {
@@ -48,26 +49,27 @@ body {
     transition: width 0.3s ease-in-out, background-color 0.3s, color 0.3s;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: center; /* For collapsed state icons */
     overflow-x: hidden;
     padding-top: 0;
 }
 
 #side-menu.expanded {
     width: var(--sidebar-width-expanded);
-    align-items: flex-start;
+    align-items: stretch; /* MODIFIED: Stretch items like expanded-menu-content */
 }
 
 #menu-toggle-container {
     width: 100%;
     display: flex;
-    justify-content: center;
+    justify-content: center; /* Default for collapsed */
     padding: 10px 0;
     box-sizing: border-box;
     position: sticky;
     top: 0;
     background-color: var(--sidebar-background);
     z-index: 1001;
+    flex-shrink: 0; /* Prevent this from shrinking */
 }
 
 #side-menu.expanded #menu-toggle-container {
@@ -111,9 +113,9 @@ body {
 #highlight-button-collapsed,
 #fullscreen-button-collapsed,
 #ai-debater-button-collapsed {
-    margin-top: 10px; /* Default top margin */
+    margin-top: 10px;
 }
-#highlight-button-collapsed { margin-top: auto; } /* This will push highlight and subsequent to bottom */
+#highlight-button-collapsed { margin-top: auto; }
 
 #highlight-button-collapsed button,
 #fullscreen-button-collapsed button,
@@ -129,21 +131,71 @@ body {
     background-color: var(--text-color);
     color: var(--sidebar-background);
 }
-#fullscreen-button-collapsed { margin-top: 10px; } /* Ensure spacing if highlight is pushed by auto */
+#fullscreen-button-collapsed { margin-top: 10px; }
 #ai-debater-button-collapsed { margin-top: 10px; margin-bottom: 5px; }
 
-
+/* MODIFIED: expanded-menu-content for flex layout */
 #expanded-menu-content {
-    width: 100%; padding-top: 0; overflow-y: auto; flex-grow: 1;
+    width: 100%;
+    padding: 0 15px 15px 15px; /* Add padding for content inside */
+    box-sizing: border-box;
+    flex-grow: 1; /* Takes available vertical space in #side-menu */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent this main container from scrolling */
 }
-#expanded-menu-content.hidden { display: none; }
-#side-menu.expanded #expanded-menu-content { display: block; }
+#expanded-menu-content.hidden { /* Used by script to initially hide it */
+    display: none !important; /* Important to override inline styles if any */
+}
 
-.menu-section { margin-bottom: 20px; padding-left: 15px; padding-right: 15px; }
-.menu-section:first-child { margin-top: 10px; }
-.menu-section h4 { margin-top: 0; margin-bottom: 10px; }
+.menu-section {
+    /* padding-left & right are now on #expanded-menu-content */
+    /* margin-bottom is now handled by :not(:last-child) */
+    flex-shrink: 0; /* Prevent sections like Settings toggle from shrinking too much */
+}
+.menu-section:not(:last-child) {
+    margin-bottom: 15px;
+}
+.menu-section:first-child { /* For the Settings toggle section */
+    margin-top: 10px;
+}
+
+.menu-section h4 { margin-top: 0; margin-bottom: 10px; } /* Default for section titles */
+
+#collapsible-settings-content .menu-subsection:not(:last-child) {
+    margin-bottom: 10px;
+}
 .menu-subsection h5 { margin-top: 0; margin-bottom: 5px; font-size: 1em; }
 .menu-section label { display: block; margin-bottom: 5px; cursor: pointer; }
+
+
+/* Styles for collapsible Settings section */
+#settings-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    /* margin-bottom: 10px; /* Removed, handled by .menu-section margin */
+}
+
+#settings-arrow {
+    margin-left: 8px;
+    font-size: 0.8em;
+    transition: transform 0.2s ease-in-out;
+}
+
+.collapsible-content.hidden { /* General class for collapsible content, managed by script */
+    display: none;
+}
+/* If script uses #expanded-menu-content .hidden, this is a fallback */
+#expanded-menu-content > .hidden {
+    display: none !important;
+}
+
+
+#progress-section-expanded { /* Script handles display: none when menu is expanded */
+    /* flex-shrink: 0; */ /* Already part of .menu-section */
+}
 #progress-section-expanded #menu-page-info { font-weight: bold; }
 
 .menu-subsection #fullscreen-button-expanded {
@@ -152,6 +204,60 @@ body {
     transition: background-color 0.2s, border-color 0.2s; font-size: 0.9em; margin-top: 5px;
 }
 .menu-subsection #fullscreen-button-expanded:hover { border-color: var(--text-color); }
+
+/* MODIFIED: ai-debater-section for flex layout */
+#ai-debater-section {
+    border-top: 1px solid var(--separator-color);
+    padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Key to fill remaining space */
+    min-height: 0; /* Essential for nested flex scrolling */
+}
+
+/* MODIFIED: ai-chat-window for flex layout */
+#ai-chat-window {
+    display: flex;
+    flex-direction: column;
+    /* height: 300px; /* REMOVED fixed height */
+    /* max-height: calc(100vh - 400px); /* REMOVED to allow full flex grow */
+    flex-grow: 1; /* Key to fill #ai-debater-section */
+    border: 1px solid var(--page-border-color);
+    border-radius: 4px;
+    overflow: hidden; /* Keep, scrolling is for messages */
+    min-height: 0; /* Essential for #ai-chat-messages to scroll */
+}
+
+#ai-chat-messages {
+    flex-grow: 1;
+    overflow-y: auto; /* This is where scrolling for messages happens */
+    padding: 10px;
+    background-color: var(--background-color);
+}
+.chat-message { margin-bottom: 10px; padding: 8px; border-radius: 4px; line-height: 1.4; max-width: 90%; }
+.chat-message.user { background-color: var(--separator-color); margin-left: auto; text-align: right; }
+.chat-message.ai { background-color: var(--page-background); border: 1px solid var(--page-border-color); margin-right: auto; }
+
+#ai-chat-input-area {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid var(--page-border-color);
+    background-color: var(--sidebar-background);
+    flex-shrink: 0; /* Prevent input area from shrinking */
+}
+#ai-user-input {
+    flex-grow: 1; padding: 8px; border: 1px solid var(--page-border-color);
+    border-radius: 4px; resize: none; margin-right: 8px; min-height: 40px;
+    font-family: inherit; font-size: 0.9em;
+    background-color: var(--background-color); color: var(--text-color);
+}
+#ai-send-button {
+    padding: 8px 15px; border: none; background-color: var(--text-color);
+    color: var(--sidebar-background); border-radius: 4px; cursor: pointer;
+    transition: opacity 0.2s;
+}
+#ai-send-button:hover { opacity: 0.8; }
+
 
 #book-container {
     flex-grow: 1; display: flex; justify-content: center; padding: 20px; gap: 20px;
@@ -175,7 +281,7 @@ body.menu-expanded #book-container { margin-right: var(--sidebar-width-expanded)
 .page .section-number { display: block; text-align: center; font-size: 1.1em; font-weight: bold; }
 .page hr { border: none; border-top: 1px solid var(--separator-color); margin: 1em auto; width: 50%; }
 .page em { font-style: italic; display: block; }
-#page-right { display: none; }
+#page-right { display: none; } /* Hidden by default, shown in @media query */
 
 #loading-area {
     text-align: center; padding: 20px; border: 1px solid var(--page-border-color);
@@ -212,14 +318,14 @@ body.menu-expanded #book-container { margin-right: var(--sidebar-width-expanded)
 #loading-status { color: var(--text-color); font-style: italic; transition: color 0.3s; }
 
 body.book-loaded #loading-area { display: none; }
-body.book-loaded #book-container { display: flex !important; }
-body.book-loaded #side-menu { display: flex !important; }
-body.book-loaded #collapsed-sidebar-content { display: flex; }
+body.book-loaded #book-container { display: flex !important; } /* Ensure it's flex */
+body.book-loaded #side-menu { display: flex !important; } /* Ensure it's flex */
+
 body.book-loaded #collapsed-book-title { display: block; }
 body.book-loaded #collapsed-progress { display: block; }
 body.book-loaded #ai-debater-button-collapsed { display: block; }
 body.book-loaded #fullscreen-button-collapsed { display: block; }
-body.book-loaded #highlight-button-collapsed {display: block; } /* Show highlight button */
+body.book-loaded #highlight-button-collapsed {display: block; }
 
 @media (min-width: 768px) {
     #book-container { flex-direction: row; }
@@ -237,7 +343,7 @@ body.book-loaded #highlight-button-collapsed {display: block; } /* Show highligh
     background-color: rgba(0, 0, 0, 0.5); z-index: 999;
     opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-    display: none;
+    display: none; /* Script toggles .active class */
 }
 #overlay-mobile.active { display: block; opacity: 1; visibility: visible; }
 
@@ -252,76 +358,31 @@ body.book-loaded #highlight-button-collapsed {display: block; } /* Show highligh
 @media (max-width: 767px) {
     .page { max-height: calc(100vh - 40px); }
     #side-menu {
-        right: calc(-1 * var(--sidebar-width-expanded)); width: var(--sidebar-width-expanded);
-        transition: right 0.3s ease-in-out; box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+        /* Uses the new wider var(--sidebar-width-expanded) for off-screen positioning and width */
+        right: calc(-1 * var(--sidebar-width-expanded));
+        width: var(--sidebar-width-expanded);
+        transition: right 0.3s ease-in-out, width 0.3s ease-in-out; /* Added width transition */
+        box-shadow: -2px 0 5px rgba(0,0,0,0.2);
     }
-    #side-menu.expanded { right: 0; }
-    #collapsed-sidebar-content { display: none !important; }
-    #book-container { margin-right: 0 !important; }
-    #menu-toggle-container {
-        position: fixed; top: 0px; right: 0px; width: auto;
-        padding: 10px 15px; z-index: 1001;
-        background-color: var(--sidebar-background); border-bottom-left-radius: 5px;
+    #side-menu.expanded {
+        right: 0;
     }
-     #side-menu.expanded #menu-toggle-container { justify-content: center; padding-right: 15px; }
-}
-
-#ai-debater-section { border-top: 1px solid var(--separator-color); padding-top: 15px; }
-#ai-chat-window {
-    display: flex; flex-direction: column; height: 300px;
-    max-height: calc(100vh - 400px);
-    border: 1px solid var(--page-border-color); border-radius: 4px; overflow: hidden;
-}
-#ai-chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; background-color: var(--background-color); }
-.chat-message { margin-bottom: 10px; padding: 8px; border-radius: 4px; line-height: 1.4; max-width: 90%; }
-.chat-message.user { background-color: var(--separator-color); margin-left: auto; text-align: right; }
-.chat-message.ai { background-color: var(--page-background); border: 1px solid var(--page-border-color); margin-right: auto; }
-#ai-chat-input-area {
-    display: flex; padding: 10px; border-top: 1px solid var(--page-border-color);
-    background-color: var(--sidebar-background);
-}
-#ai-user-input {
-    flex-grow: 1; padding: 8px; border: 1px solid var(--page-border-color);
-    border-radius: 4px; resize: none; margin-right: 8px; min-height: 40px;
-    font-family: inherit; font-size: 0.9em;
-    background-color: var(--background-color); color: var(--text-color);
-}
-#ai-send-button {
-    padding: 8px 15px; border: none; background-color: var(--text-color);
-    color: var(--sidebar-background); border-radius: 4px; cursor: pointer;
-    transition: opacity 0.2s;
-}
-#ai-send-button:hover { opacity: 0.8; }
-
-/* Styles for collapsible Settings section */
-#settings-toggle {
-    display: flex;
-    justify-content: space-between; /* Aligns arrow to the right */
-    align-items: center;
-    cursor: pointer;
-    margin-bottom: 10px; /* Add some space if settings are open */
-}
-
-#settings-arrow {
-    margin-left: 8px; /* Space for the arrow */
-    font-size: 0.8em; /* Adjust arrow size if needed */
-    transition: transform 0.2s ease-in-out; /* For rotation if you choose that method */
-}
-
-/* Ensure .hidden class is effective */
-.collapsible-content.hidden {
-    display: none;
-}
-/* If you already have a global .hidden { display: none !important; }, that's fine too. */
-/* This is an alternative if you don't want/need !important here */
-#expanded-menu-content .hidden { 
-    display: none;
-}
-
-/* Ensure menu sections have some padding if they are directly one after another */
-.menu-section:not(:last-child) {
-    margin-bottom: 15px; 
-}
-#collapsible-settings-content .menu-subsection:not(:last-child) {
-    margin-bottom: 10px;
+    #collapsed-sidebar-content { display: none !important; } /* Important for mobile when expanded */
+    #book-container { margin-right: 0 !important; } /* No margin when sidebar is off-screen or overlaying */
+    
+    #menu-toggle-container { /* On mobile, this is the visible part to tap */
+        position: fixed; /* Keeps it on screen if #side-menu slides out */
+        top: 0px;
+        right: 0px; /* Attach to the right edge of viewport */
+        width: auto; /* Let content define width */
+        padding: 10px 15px;
+        z-index: 1001; /* Above side-menu before it's fully expanded */
+        background-color: var(--sidebar-background);
+        border-bottom-left-radius: 5px;
+    }
+     #side-menu.expanded #menu-toggle-container { /* When menu is open on mobile */
+        position: sticky; /* Revert to sticky within the opened menu */
+        justify-content: flex-end;
+        /* padding-right: 15px; /* Ensured */
+     }
 }
