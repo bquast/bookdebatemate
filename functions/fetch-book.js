@@ -1,115 +1,91 @@
 // functions/fetch-book.js
 
-function processPgaText(text, titleHint) {
+function cleanTextAndExtractMetadata(text, titleHintForPreambleStripper) {
     let lines = text.split('\n');
     let extractedTitle = null;
     let extractedAuthor = null;
-    let authorLineIndex = -1;
-    let titleLineIndex = -1;
+    let actualContentStartIndex = -1; // Line index where the main book content (e.g. Chapter 1) starts
 
-    // Find the *last* occurrences of Title: and Author: before a likely content start,
-    // or within a reasonable header block. PGA often has them near the end of metadata.
-    const contentStartKeywords = ["chapter 1", "chapter i", "part one", "part i", "book one", "book i", "prologue", "foreword", "preface", "introduction", (titleHint || "a^b^c").toLowerCase()];
-    let possibleContentStartIndex = lines.length;
+    // Keywords that often signal the start of the main content
+    const contentStartKeywords = [
+        "chapter 1", "chapter i", "part one", "part i", "book one", "book i",
+        "prologue", "foreword", "preface", "introduction",
+        // Add the titleHint as a potential start marker, especially if it's repeated
+        (titleHintForPreambleStripper || "a very unlikely string to match").toLowerCase()
+    ];
 
+    // Find the line number where the actual content likely begins
     for (let i = 0; i < lines.length; i++) {
-        if (contentStartKeywords.some(marker => lines[i].trim().toLowerCase().startsWith(marker))) {
-            possibleContentStartIndex = i;
+        const lineTrimmedLower = lines[i].trim().toLowerCase();
+        // Check if the line *starts with* a content start keyword.
+        // For title hint, it should be a more exact match if it's the title itself.
+        if (contentStartKeywords.some(marker => {
+            if (marker === (titleHintForPreambleStripper || "").toLowerCase() && marker.length > 3) { // More exact for title
+                return lineTrimmedLower === marker;
+            }
+            return lineTrimmedLower.startsWith(marker);
+        })) {
+            actualContentStartIndex = i;
             break;
         }
     }
-    if (possibleContentStartIndex === lines.length && lines.length > 50) { // If no clear start, maybe it's just after ~30-50 lines of preamble
-        possibleContentStartIndex = Math.min(50, lines.length);
-         while (possibleContentStartIndex < lines.length && lines[possibleContentStartIndex].trim() === "") {
-            possibleContentStartIndex++; // find next non-blank
+    
+    // If no strong marker, make a guess (e.g. after first 30-60 lines of typical preamble)
+    if (actualContentStartIndex === -1) {
+        let potentialEnd = Math.min(60, lines.length -1); // Don't go past end of doc
+        for(let i = potentialEnd; i > 0; i--) { // Search backwards for first significant content block
+            if (lines[i].trim().length > 20 && lines[i-1] && lines[i-1].trim() === "") { // Non-empty line after a blank line
+                actualContentStartIndex = i;
+                break;
+            }
         }
+        if (actualContentStartIndex === -1) actualContentStartIndex = 0; // Ultimate fallback
+        console.warn("No strong content start marker found for preamble stripping; using heuristic position: " + actualContentStartIndex);
     }
 
+    // Now, search for Title: and Author: lines in the block *before* actualContentStartIndex
+    let searchEndIndex = actualContentStartIndex;
+    let searchStartIndex = 0; // Search from beginning up to content start
 
-    // Search for Title and Author backwards from the possible content start or from a max preamble search depth
-    let searchLimit = Math.min(possibleContentStartIndex, 70); // Don't search too far back into the document
-
-    for (let i = searchLimit -1; i >= 0; i--) {
+    for (let i = searchStartIndex; i < searchEndIndex; i++) {
         const line = lines[i];
         const lineLower = line.toLowerCase().trim();
         if (lineLower.startsWith("title:")) {
-            const titleValue = line.substring(lineLower.indexOf("title:") + "title:".length).trim();
-            if (titleValue && !extractedTitle) { // Take the last one found before content
-                extractedTitle = titleValue;
-                titleLineIndex = i;
-            }
+            const titleValue = line.substring("title:".length).trim();
+            if (titleValue) extractedTitle = titleValue; // Overwrite if multiple found, take last one before content
         } else if (lineLower.startsWith("author:")) {
-            const authorValue = line.substring(lineLower.indexOf("author:") + "author:".length).trim();
-            if (authorValue && !extractedAuthor) { // Take the last one found before content
-                extractedAuthor = authorValue;
-                authorLineIndex = i;
-            }
-        }
-        if (extractedTitle && extractedAuthor) break; // Stop if both found
-    }
-    
-    // If not found in the targeted block, try a broader search in the first few lines as a fallback
-    if (!extractedTitle || !extractedAuthor) {
-        for (let i = 0; i < Math.min(lines.length, 30); i++) {
-            const line = lines[i];
-            const lineLower = line.toLowerCase().trim();
-            if (!extractedTitle && lineLower.startsWith("title:")) {
-                 extractedTitle = line.substring(lineLower.indexOf("title:") + "title:".length).trim();
-                 titleLineIndex = i;
-            }
-            if (!extractedAuthor && lineLower.startsWith("author:")) {
-                 extractedAuthor = line.substring(lineLower.indexOf("author:") + "author:".length).trim();
-                 authorLineIndex = i;
-            }
+            const authorValue = line.substring("author:".length).trim();
+            if (authorValue) extractedAuthor = authorValue;
         }
     }
 
-
-    // If title still not found from content, use the hint from URL/filename
-    if (!extractedTitle && titleHint) {
-        extractedTitle = titleHint;
+    // If title still not found from content, use the hint from URL/filename (passed by client)
+    if (!extractedTitle && titleHintForPreambleStripper) {
+        extractedTitle = titleHintForPreambleStripper;
     }
 
-    let bodyStartIndex = 0;
-    if (authorLineIndex !== -1) {
-        // Remove everything up to and including the Author line
-        bodyStartIndex = authorLineIndex + 1;
-    } else if (titleLineIndex !== -1) {
-        // If only title was found, remove up to and including title line
-        bodyStartIndex = titleLineIndex + 1;
+    // --- Construct the output ---
+    let body = "";
+    if (actualContentStartIndex !== -1 && actualContentStartIndex < lines.length) {
+        body = lines.slice(actualContentStartIndex).join('\n').trim();
     } else {
-        // If neither, this means the structure is different. We might need to rely on possibleContentStartIndex
-        // or a more generic preamble stripper. For PGA, this case should be rare if Title/Author are present.
-        // For now, if no Title/Author identified in preamble to anchor removal, keep existing contentStartIndex logic
-        bodyStartIndex = possibleContentStartIndex;
-        console.warn("PGA process: Could not find clear Title/Author lines to anchor preamble removal. Relying on content start markers.");
+        console.warn("Could not confidently determine content start; preamble stripping might be incomplete.");
+        body = text; // Fallback to original text
+        // Re-attempt extraction if body is the whole text
+        if (!extractedTitle && titleHintForPreambleStripper) extractedTitle = titleHintForPreambleStripper;
+        if (!extractedTitle) { const tm = text.match(/^Title:\s*(.*)/im); if (tm) extractedTitle = tm[1].trim(); }
+        if (!extractedAuthor) { const am = text.match(/^Author:\s*(.*)/im); if (am) extractedAuthor = am[1].trim(); }
     }
-    
-    // Ensure bodyStartIndex is valid and skips any leading blank lines from actual content
-    while (bodyStartIndex < lines.length && lines[bodyStartIndex].trim() === "") {
-        bodyStartIndex++;
-    }
-    bodyStartIndex = Math.min(bodyStartIndex, lines.length);
 
-    let body = lines.slice(bodyStartIndex).join('\n').trim();
-    
-    // Construct the Markdown header
     let prependedHeader = "";
-    if (extractedTitle) {
-        prependedHeader += `# ${extractedTitle.trim()}\n`;
-    }
-    if (extractedAuthor) {
-        prependedHeader += `## ${extractedAuthor.trim()}\n`;
-    }
-    if (prependedHeader) {
-        prependedHeader += "\n"; // Blank line after header
-    }
-
-    console.log(`PGA Processed. Using Title: '${extractedTitle}', Author: '${extractedAuthor}'. Body starts from effective line ~${bodyStartIndex +1}.`);
+    if (extractedTitle) prependedHeader += `# ${extractedTitle.trim()}\n`;
+    if (extractedAuthor) prependedHeader += `## ${extractedAuthor.trim()}\n`;
+    if (prependedHeader) prependedHeader += "\n";
+    
+    console.log(`PGA/TXT Processed. Header: '${prependedHeader.trim()}', Body starts from original line ~${actualContentStartIndex}.`);
     return prependedHeader + body;
 }
 
-// Main onRequestGet function (remains the same as in the previous "full script" response)
 export async function onRequestGet(context) {
     const { request } = context;
     const requestUrl = new URL(request.url);
@@ -135,39 +111,27 @@ export async function onRequestGet(context) {
                 if (['latin1', 'iso-8859-1', 'windows-1252', 'cp1252'].includes(cs)) sourceEncoding = 'iso-8859-1';
                 else if (cs === 'utf-8' || cs === 'utf8') sourceEncoding = 'utf-8';
                 else {
-                    console.warn(`Unsupported charset in Content-Type: ${cs}. Assuming ${bookUrl.endsWith('.txt') ? 'iso-8859-1' : 'utf-8'}.`);
                     sourceEncoding = bookUrl.endsWith('.txt') ? 'iso-8859-1' : 'utf-8';
                 }
-            } else if (bookUrl.endsWith('.txt')) {
-                 console.log('No charset in Content-Type for .txt, assuming ISO-8859-1.');
-                sourceEncoding = 'iso-8859-1';
-            }
-        } else if (bookUrl.endsWith('.txt')) {
-            console.log('No Content-Type header for .txt, assuming ISO-8859-1.');
-            sourceEncoding = 'iso-8859-1';
-        }
+            } else if (bookUrl.endsWith('.txt')) sourceEncoding = 'iso-8859-1';
+        } else if (bookUrl.endsWith('.txt')) sourceEncoding = 'iso-8859-1';
         
         console.log(`Decoding with source encoding: ${sourceEncoding} for URL: ${bookUrl}`);
         try {
             textContent = new TextDecoder(sourceEncoding, { fatal: true }).decode(arrayBuffer);
         } catch (e) {
-            console.warn(`Fatal decode as ${sourceEncoding} failed: ${e.message}. Trying non-fatal UTF-8 as fallback.`);
+            console.warn(`Fatal decode as ${sourceEncoding} failed: ${e.message}. Trying non-fatal UTF-8.`);
             textContent = new TextDecoder('utf-8', { fatal: false }).decode(arrayBuffer);
         }
 
-        // Specifically process for PGA .txt files using the new logic
-        if (bookUrl.includes("gutenberg.net.au") && bookUrl.endsWith('.txt')) {
-            console.log(`Applying PGA-specific processing for: ${bookUrl}`);
-            textContent = processPgaText(textContent, bookTitleHint);
-        } 
-        // Optional: Add similar specific processing for archive.org if its preamble is different
-        // else if (bookUrl.includes("archive.org/stream/") && bookUrl.endsWith('.txt')) {
-        //     textContent = processArchiveOrgText(textContent, bookTitleHint); // A new function
-        // }
+        if (bookUrl.endsWith('.txt') && (bookUrl.includes("gutenberg.net.au") || bookUrl.includes("archive.org"))) {
+            console.log(`Applying text cleaning and metadata extraction for: ${bookUrl}`);
+            textContent = cleanTextAndExtractMetadata(textContent, bookTitleHint);
+        }
         
         return new Response(textContent, { headers: { 'Content-Type': `text/plain; charset=${finalEncoding}` } });
     } catch (error) {
-        console.error('Cloudflare Function Error:', error);
+        console.error('Cloudflare Function Error in fetch-book:', error);
         return new Response(`Proxy error: ${error.message}`, { status: 500 });
     }
 }

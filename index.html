@@ -3,13 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bookmark Renderer</title>
+    <title>Book Debate Mate</title> {/* UPDATED TITLE */}
     <link rel="stylesheet" href="style.css">
-    </head>
+    {/* PWA & Mobile App Manifest (for later)
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#add8e6">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BookDebateMate">
+    */}
+</head>
 <body>
 
     <div id="loading-area">
-        <h2>Load a Markdown Book</h2>
+        <h2>Load a Book to Debate!</h2>
         <div class="load-option">
             <h3>Load from Repository:</h3>
             <input type="text" id="book-search" placeholder="Search by title or author">
@@ -21,7 +29,7 @@
         </div>
         <div class="load-option">
             <h3>From a URL:</h3>
-            <input type="text" id="url-input" placeholder="Enter markdown file URL">
+            <input type="text" id="url-input" placeholder="Enter .md or .txt file URL">
             <button id="load-url">Load URL</button>
         </div>
         <p id="loading-status"></p>
@@ -55,11 +63,16 @@
             <div id="collapsed-progress" class="menu-section" style="display: none;">
                 <span id="simple-page-info"></span>
             </div>
+            {/* Highlight Button (for later) - Added Placeholder */}
+            <div id="highlight-button-collapsed" class="menu-section" style="display: none;">
+                <button title="Highlight Selection (Future Feature)">&#x270F;</button> {/* Example: Pencil icon */}
+            </div>
+            <div id="fullscreen-button-collapsed" class="menu-section" style="display: none;">
+                <button title="Toggle Fullscreen">&#x26F6;</button> 
+            </div>
             <div id="ai-debater-button-collapsed" class="menu-section" style="display: none;">
                 <button title="AI Debater">?</button>
             </div>
-            <div id="fullscreen-button-collapsed" class="menu-section" style="display: none;">
-                <button title="Toggle Fullscreen">&#x26F6;</button> </div>
         </div>
         <div id="expanded-menu-content" class="hidden">
             <div class="menu-section">
