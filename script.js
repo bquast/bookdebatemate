@@ -347,6 +347,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPage > 0) { currentPage--; renderPage(currentPage); }
     }
 
+    // --- Menu Toggling ---
+    function toggleMenu(forceState) {
+        const isDesktop = window.innerWidth >= 768;
+        const currentlyExpanded = sideMenu.classList.contains('expanded');
+        const expand = forceState !== undefined ? forceState : !currentlyExpanded;
+
+        sideMenu.classList.toggle('expanded', expand);
+        document.body.classList.toggle('menu-expanded', expand);
+        
+        if (expandedMenuContent) expandedMenuContent.classList.toggle('hidden', !expand);
+        
+        // On mobile, collapsed sidebar content is always hidden by CSS `display: none !important;`
+        // On desktop, we toggle its display directly.
+        if (isDesktop && collapsedSidebarContent) {
+            collapsedSidebarContent.style.display = expand ? 'none' : 'flex';
+        }
+
+
+        if (!isDesktop) {
+            if (overlayMobile) overlayMobile.classList.toggle('active', expand);
+        }
+        
+        if (expand && aiDebaterSection && aiDebaterButtonCollapsed && document.activeElement === aiDebaterButtonCollapsed.querySelector('button')) {
+            aiDebaterSection.style.display = 'block';
+            if (aiUserInput) aiUserInput.focus();
+        }
+        
+        if (bookContent.length > 0) {
+            pages = paginateContent(bookContent);
+            renderPage(currentPage);
+        }
+    }
+
+
     // --- UI State Management ---
     function showLoadingScreenInterface() {
         loadingArea.style.display = 'block'; bookContainer.style.display = 'none';
@@ -358,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'none';
         if (aiDebaterSection) aiDebaterSection.style.display = 'none';
         if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'none';
-        if (highlightButtonCollapsed) highlightButtonCollapsed.style.display = 'none'; // Hide new highlight button
+        if (highlightButtonCollapsed) highlightButtonCollapsed.style.display = 'none';
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
         updateFullscreenButtonState();
@@ -372,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
             if (isExternalUrl) {
                 console.log(`Proxying external URL: ${url} with title hint: ${title}`);
-                const proxyUrlPath = '/fetch-book'; // Ensure this matches your Cloudflare function path
+                const proxyUrlPath = '/fetch-book';
                 const proxyResponse = await fetch(`${proxyUrlPath}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`);
                 if (!proxyResponse.ok) throw new Error(`Proxy error! (${proxyResponse.status}) ${await proxyResponse.text()}`);
                 markdownText = await proxyResponse.text();
@@ -396,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let tempBookContent = parseMarkdown(markdownText);
         
         let hasH1 = tempBookContent.slice(0, 3).some(block => block.toLowerCase().startsWith('<h1>'));
-        if (!hasH1 && title) { // Fallback title injection
+        if (!hasH1 && title) {
             tempBookContent.unshift(`<h1>${title}</h1>`);
             console.log(`Fallback: Prepended H1 title ('${title}') from filename/repo as none was found.`);
         }
@@ -414,12 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
             sideMenu.style.display = 'flex'; document.body.classList.add('book-loaded');
             if (aiDebaterButtonCollapsed) aiDebaterButtonCollapsed.style.display = 'block';
             if (fullscreenButtonCollapsed) fullscreenButtonCollapsed.style.display = 'block';
-            if (highlightButtonCollapsed) highlightButtonCollapsed.style.display = 'block'; // Show highlight button
+            if (highlightButtonCollapsed) highlightButtonCollapsed.style.display = 'block';
             loadingStatus.textContent = '';
             if (sideMenu.classList.contains('expanded')) toggleMenu(false);
         } else {
             loadingStatus.textContent = 'Could not process content or book empty.';
-            showLoadingScreenInterface(); // Resets all relevant UI
+            showLoadingScreenInterface();
         }
         conversationHistory = [];
         if(aiChatMessages) aiChatMessages.innerHTML = '';
@@ -439,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addRecentBook({ title: title, url: null });
         };
         reader.onerror = () => loadingStatus.textContent = 'Error loading file.';
-        reader.readAsText(file); // Note: readAsText uses UTF-8 by default for local files
+        reader.readAsText(file);
     });
 
     loadUrlButton.addEventListener('click', () => {
@@ -450,9 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchRepositoryBooks() {
         try {
-            const response = await fetch('books_index.json'); // Assumes books_index.json is in the root
+            const response = await fetch('books_index.json');
             if (!response.ok) throw new Error('Book index not found or failed to load.');
-            allRepositoryBooks = await response.json(); renderRepositoryBooks(allRepositoryBooks);
+            allRepositoryBooks = await response.json();
+            renderRepositoryBooks(allRepositoryBooks);
         } catch (error) {
             console.error("Repo fetch error:", error);
             const repoTitleEl = Array.from(loadingArea.querySelectorAll('.load-option h3')).find(h3 => h3.textContent.includes("Load from Repository"));
@@ -462,9 +497,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderRepositoryBooks(booksToRender) { /* ... same as before ... */ }
-    function filterRepositoryBooks() { /* ... same as before ... */ }
-    function toggleMenu(forceState) { /* ... same as before ... */ }
+    function renderRepositoryBooks(booksToRender) {
+        repositoryBooksList.innerHTML = '';
+        if (booksToRender.length > 0) {
+            booksToRender.forEach(book => {
+                const li = document.createElement('li');
+                li.textContent = `${book.title} - ${book.author} (${book.year})`;
+                li.dataset.url = book.url;
+                li.dataset.title = book.title;
+                li.addEventListener('click', () => loadBookFromURL(book.url, book.title));
+                repositoryBooksList.appendChild(li);
+            });
+        } else {
+            repositoryBooksList.innerHTML = '<li>No matching books found.</li>';
+        }
+    }
+    function filterRepositoryBooks() {
+        const searchTerm = bookSearchInput.value.toLowerCase();
+        const filteredBooks = allRepositoryBooks.filter(book => 
+            book.title.toLowerCase().includes(searchTerm) || 
+            book.author.toLowerCase().includes(searchTerm)
+        );
+        renderRepositoryBooks(filteredBooks);
+    }
 
     // --- AI Debater ---
     function getSelectedTextOnPage() {
@@ -485,16 +540,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return selectedText;
     }
 
-    function getCurrentPageText() { /* ... same as before ... */ }
-    function addMessageToChat(text, sender) { /* ... same as before ... */ }
+    function getCurrentPageText() {
+        let text = "";
+        if (pageLeft && pageLeft.textContent) text += pageLeft.textContent + "\n\n";
+        if (pageRight && pageRight.textContent && window.innerWidth >= 768) text += pageRight.textContent;
+        return text.trim();
+    }
+    function addMessageToChat(text, sender) {
+        if (!aiChatMessages) return;
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-message', sender);
+        messageDiv.textContent = text; // Using textContent to prevent XSS
+        aiChatMessages.appendChild(messageDiv);
+        aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+    }
 
     async function handleSendToAI() {
         if (!aiUserInput || !aiSendButton || !aiStatus) return;
         const userText = aiUserInput.value.trim();
-        // If userText is empty, we could still send selectedText/fullPageContext for an initial explanation
-        // For now, we proceed even if userText is empty to trigger based on selection/page context
         
-        addMessageToChat(userText, 'user'); // Add user's (possibly empty) message
+        addMessageToChat(userText, 'user');
         aiUserInput.value = '';
         aiStatus.textContent = 'Book Debate Mate is thinking...';
         aiSendButton.disabled = true; aiUserInput.disabled = true;
@@ -502,11 +567,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedTextOnPage = getSelectedTextOnPage();
         const fullPageContext = getCurrentPageText();
         
-        // Add current user message to history, even if empty (signals an interaction)
         conversationHistory.push({ role: "user", content: userText }); 
 
         try {
-            const response = await fetch('/api/debate', { // PATH TO YOUR CLOUDFLARE FUNCTION
+            const response = await fetch('/api/debate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -552,21 +616,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (aiSendButton) aiSendButton.addEventListener('click', handleSendToAI);
     if (aiUserInput) aiUserInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendToAI(); } });
     
-    // Placeholder for Highlight button
     if (highlightButtonCollapsed?.querySelector('button')) {
         highlightButtonCollapsed.querySelector('button').addEventListener('click', () => {
             const selectedText = getSelectedTextOnPage();
             if (selectedText) {
                 alert(`Highlight feature (WIP):\nSelected: "${selectedText}"\nThis would be saved to KV later.`);
-                // Here you would later implement logic to:
-                // 1. Wrap the selected text in a <span class="highlighted"> or similar.
-                // 2. Store range information or unique identifiers for the highlight in Cloudflare KV.
             } else {
                 alert("Please select some text on the page to highlight.");
             }
         });
     }
-
 
     // --- Event Listeners & Init ---
     document.addEventListener('keydown', (event) => {
@@ -599,6 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateFullscreenButtonState();
     });
+
     function init() {
         applySavedTheme(); 
         applySavedJustification();
@@ -611,39 +671,18 @@ document.addEventListener('DOMContentLoaded', () => {
         clearRecentBooksButton.addEventListener('click', clearRecentBooks);
         if (bookSearchInput) bookSearchInput.addEventListener('input', filterRepositoryBooks);
         
+        // MODIFICATION: Added event listeners for menu toggle and overlay
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => toggleMenu());
+        }
+        if (overlayMobile) {
+            overlayMobile.addEventListener('click', () => toggleMenu(false)); // Close menu on overlay click
+        }
+        // END MODIFICATION
+
         if (overlayMobile && window.innerWidth >= 768) overlayMobile.classList.remove('active');
-        // updateFullscreenButtonState(); // Called by showLoadingScreenInterface
+        // updateFullscreenButtonState(); // Called by showLoadingScreenInterface which calls it.
     }
 
     init();
-
-    // Copying the definitions of functions that were previously marked as "...same as before..."
-    // to ensure this script is fully self-contained based on our last complete version.
-
-    // Local Storage & Book Management (Pasted from previous complete script)
-    // ... (saveBookToLocalStorage, loadBookFromLocalStorage, listSavedBooks, clearSavedBooks)
-    // ... (addRecentBook, getRecentBooks, listRecentBooks, clearRecentBooks)
-    // All already included above.
-
-    // Appearance Settings (Pasted)
-    // ... (setTheme, applySavedTheme, setJustifyText, applySavedJustification)
-    // All already included above.
-
-    // Markdown Parsing & Pagination (Pasted)
-    // ... (parseMarkdown, paginateContent) - These are complex and were included.
-
-    // Render Pages & Update Progress (Pasted)
-    // ... (renderPage) - Included.
-
-    // Navigation (Pasted)
-    // ... (nextPage, prevPage) - Included.
-    // Keydown listener is updated above.
-    // Page click listeners are above.
-
-    // Repository Book List and Search (Pasted)
-    // ... (fetchRepositoryBooks, renderRepositoryBooks, filterRepositoryBooks) - Included.
-
-    // Menu Toggling (Pasted)
-    // ... (toggleMenu) - Included.
-    // MenuToggle and overlay click listeners are above.
 });
